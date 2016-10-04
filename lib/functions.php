@@ -481,7 +481,7 @@ function profile_sync_proccess_configuration(ElggObject $sync_config) {
 		elgg_trigger_event('update_user', 'profile_sync', $update_event_params);
 		
 		// cache cleanup
-		_elgg_invalidate_cache_for_entity($user->getGUID());
+		_elgg_services()->entityCache->remove($user->getGUID());
 		$metadata_cache->clear($user->getGUID());
 	}
 	
