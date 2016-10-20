@@ -55,7 +55,7 @@ return array (
   'profile_sync' => 'Profile Sync',
   'admin:configure_utilities:profile_sync' => 'Profile Sync',
   'item:object:profile_sync_datasource' => 'Profile Sync databron',
-  'item:object:profile_sync_config' => 'Prorile Sync configuratie',
+  'item:object:profile_sync_config' => 'Profile Sync configuratie',
   'profile_sync:sync_config:run' => 'Sync nu',
   'profile_sync:sync_configs:schedule:manual' => 'Handmatig',
   'profile_sync:admin:datasources' => 'Databronnen',
