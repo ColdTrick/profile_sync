@@ -275,6 +275,9 @@ function profile_sync_proccess_configuration(ElggObject $sync_config) {
 			'user_icon_full_path',
 		];
 		
+		// keep track if userdata is changed
+		$user_touched = false;
+		
 		foreach ($sync_match as $datasource_col => $profile_config) {
 			list($datasource_col) = explode(PROFILE_SYNC_DATASOURCE_COL_SEPERATOR, $datasource_col);
 			
@@ -329,7 +332,7 @@ function profile_sync_proccess_configuration(ElggObject $sync_config) {
 					
 					// save user attribute
 					$user->$profile_field = $value;
-					$user->save();
+					$user_touched = true;
 					break;
 				case 'user_icon_relative_path':
 					// get a user icon based on a relative file path/url
@@ -431,6 +434,7 @@ function profile_sync_proccess_configuration(ElggObject $sync_config) {
 					unlink($tmp_icon);
 					unset($fh);
 					
+					$user_touched = true;
 					break;
 				default:
 					// check overrides
@@ -466,9 +470,14 @@ function profile_sync_proccess_configuration(ElggObject $sync_config) {
 					
 					// save new value
 					$user->setMetadata($profile_field, $value, '', false, $user->getGUID(), $access);
-					
+					$user_touched = true;
 					break;
 			}
+		}
+		
+		if ($user_touched) {
+			// if user data changed update user
+			$user->save();
 		}
 		
 		// let others know we updated the user
