@@ -1,6 +1,10 @@
 Version history
 ===============
 
+3.0.1 (2017-05-11):
+
+- changed: always trigger user save event when any user data changes
+
 3.0 (2016-10-06):
 
 - changed: use new private function for invalidating entity cache
