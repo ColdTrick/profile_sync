@@ -25,6 +25,10 @@ $english = array(
 	'profile_sync:settings:memory_limit:512' => "512M",
 	'profile_sync:settings:memory_limit:unlimited' => "Unlimited",
 	
+	'profile_sync:settings:postfix_username' => 'Postfix username',
+	'profile_sync:settings:postfix_username:description' => 'Setting a value here will allow usernames to be postfixed with a value until it is unique when creating new accounts',
+	
+	
 	'profile_sync:sync_config:run' => "Run now",
 	'profile_sync:sync_config:processing' => "Processing....",
 	'profile_sync:sync_configs:schedule:manual' => "Manual",

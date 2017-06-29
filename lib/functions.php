@@ -207,6 +207,14 @@ function profile_sync_proccess_configuration(ElggObject $sync_config) {
 				$name = profile_sync_filter_var($source_row[$create_user_name]);
 				$email = profile_sync_filter_var($source_row[$create_user_email]);
 				
+				// precheck username existence to make it unique if possible
+				$postfix_username = elgg_get_plugin_setting('postfix_username', 'profile_sync');
+				if ($postfix_username) {
+					while($existing_user = get_user_by_username($username)) {
+						$username .= $postfix_username;
+					}
+				}
+				
 				$user_guid = register_user($username, $pwd, $name, $email);
 				if (!empty($user_guid)) {
 					$counters["user created"]++;

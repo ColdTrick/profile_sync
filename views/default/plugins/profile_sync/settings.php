@@ -20,3 +20,12 @@ echo elgg_view("input/dropdown", array(
 ));
 echo "<div class='elgg-subtext'>" . elgg_echo("profile_sync:settings:memory_limit:description") . "</div>";
 echo "</div>";
+
+echo "<div>";
+echo elgg_echo("profile_sync:settings:postfix_username");
+echo elgg_view("input/text", array(
+	"name" => "params[postfix_username]",
+	"value" => $plugin->postfix_username,
+));
+echo "<div class='elgg-subtext'>" . elgg_echo("profile_sync:settings:postfix_username:description") . "</div>";
+echo "</div>";
