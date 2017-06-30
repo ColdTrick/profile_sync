@@ -44,7 +44,10 @@ $english = array(
 	'profile_sync:admin:datasources:type:choose' => "Pick a datasource type",
 	'profile_sync:admin:datasources:type:mysql' => "MySQL",
 	'profile_sync:admin:datasources:type:csv' => "CSV",
+	'profile_sync:admin:datasources:type:csv_folder' => "CSV Folder",
 	'profile_sync:admin:datasources:type:api' => "REST/API",
+	
+	'profile_sync:admin:datasources:type:csv_folder:description' => "A complete folder will be scanned for csv files and all files will be processed. After successful processing the files will be deleted.",
 	
 	'profile_sync:admin:datasources:edit:mysql:dbhost' => "Database host",
 	'profile_sync:admin:datasources:edit:mysql:dbport' => "Database port",

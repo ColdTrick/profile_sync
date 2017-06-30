@@ -10,6 +10,7 @@ $type_options = array(
 	"" => elgg_echo("profile_sync:admin:datasources:type:choose"),
 	"mysql" => elgg_echo("profile_sync:admin:datasources:type:mysql"),
 	"csv" => elgg_echo("profile_sync:admin:datasources:type:csv"),
+	"csv_folder" => elgg_echo("profile_sync:admin:datasources:type:csv_folder"),
 	"api" => elgg_echo("profile_sync:admin:datasources:type:api"),
 );
 

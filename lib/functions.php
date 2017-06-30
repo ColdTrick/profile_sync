@@ -987,6 +987,9 @@ function profile_sync_get_datasource_handler(ElggObject $datasource, $last_run =
 		case 'csv':
 			return new ProfileSyncCSV($datasource, $last_run);
 			break;
+		case 'csv_folder':
+			return new ProfileSyncCSVFolder($datasource, $last_run);
+			break;
 		case 'api':
 			return new ProfileSyncAPI($datasource, $last_run);
 			break;
