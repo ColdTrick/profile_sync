@@ -28,6 +28,8 @@ $english = array(
 	'profile_sync:settings:postfix_username' => 'Postfix username',
 	'profile_sync:settings:postfix_username:description' => 'Setting a value here will allow usernames to be postfixed with a value until it is unique when creating new accounts',
 	
+	'profile_sync:settings:group_match_name' => 'Enter group metadata name to match on',
+	'profile_sync:settings:group_match_name:description' => 'Configure the metadataname of a group profile field to match the autojoin / autoleave group columns on',
 	
 	'profile_sync:sync_config:run' => "Run now",
 	'profile_sync:sync_config:processing' => "Processing....",
@@ -73,6 +75,8 @@ $english = array(
 	'profile_sync:admin:sync_configs:edit:profile_column:icon_full' => "User icon (full path)",
 	'profile_sync:admin:sync_configs:edit:profile_column:icon_relative' => "User icon (relative path)",
 	'profile_sync:admin:sync_configs:edit:profile_column:icon_base64' => "User icon (base64-encoded)",
+	'profile_sync:admin:sync_configs:edit:profile_column:group_auto_join' => "Auto Join Group",
+	'profile_sync:admin:sync_configs:edit:profile_column:group_auto_leave' => "Auto Leave Group",
 	'profile_sync:admin:sync_configs:edit:fields' => "Field configuration",
 	'profile_sync:admin:sync_configs:edit:always_override' => "Always override",
 	'profile_sync:admin:sync_configs:edit:unique_id' => "Unique matching fields",

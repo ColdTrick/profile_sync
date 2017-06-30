@@ -283,6 +283,8 @@ function profile_sync_proccess_configuration(ElggObject $sync_config) {
 			"user_icon_relative_path",
 			"user_icon_full_path",
 			"user_icon_base64",
+			"group_auto_join",
+			"group_auto_leave",
 		);
 		
 		foreach ($sync_match as $datasource_col => $profile_config) {
@@ -501,6 +503,20 @@ function profile_sync_proccess_configuration(ElggObject $sync_config) {
 					}
 					unset($fh);
 					
+					break;
+				case "group_auto_join":
+					
+					$group = profile_sync_get_group_by_id("$value");
+					if ($group) {
+						$group->join($user);
+					}
+					break;
+				case "group_auto_leave":
+					
+					$group = profile_sync_get_group_by_id("$value");
+					if ($group) {
+						$group->leave($user);
+					}
 					break;
 				default:
 					// check overrides
@@ -1080,4 +1096,36 @@ function profile_sync_validate_sync_secret(ElggObject $sync_config, $secret) {
 	}
 	
 	return ($secret === $correct_secret);
+}
+
+/**
+ * Returns a group based on a given id and a configured group profile metadata field
+ * @param string $id
+ *
+ * @return ElggGroup|false
+ */
+function profile_sync_get_group_by_id($id) {
+	
+	if (empty($id) || !is_string($id)) {
+		return;
+	}
+	
+	$metadata_name = elgg_get_plugin_setting('group_match_name', 'profile_sync');
+	if (!$metadata_name) {
+		return false;
+	}
+	
+	$options = [
+		'type' => 'group',
+		'metadata_name' => $metadata_name,
+		'metadata_value' => $id,
+		'limit' => 1,
+	];
+	
+	$groups = elgg_get_entities_from_metadata($options);
+	if (!$groups) {
+		return false;
+	}
+	
+	return $groups[0];
 }

@@ -29,3 +29,12 @@ echo elgg_view("input/text", array(
 ));
 echo "<div class='elgg-subtext'>" . elgg_echo("profile_sync:settings:postfix_username:description") . "</div>";
 echo "</div>";
+
+echo "<div>";
+echo elgg_echo("profile_sync:settings:group_match_name");
+echo elgg_view("input/text", array(
+	"name" => "params[group_match_name]",
+	"value" => $plugin->group_match_name,
+));
+echo "<div class='elgg-subtext'>" . elgg_echo("profile_sync:settings:group_match_name:description") . "</div>";
+echo "</div>";

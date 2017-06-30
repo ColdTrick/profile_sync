@@ -92,6 +92,8 @@ $profile_columns = array(
 	"user_icon_full_path" => elgg_echo("profile_sync:admin:sync_configs:edit:profile_column:icon_full"),
 	"user_icon_relative_path" => elgg_echo("profile_sync:admin:sync_configs:edit:profile_column:icon_relative"),
 	"user_icon_base64" => elgg_echo("profile_sync:admin:sync_configs:edit:profile_column:icon_base64"),
+	"group_auto_join" => elgg_echo("profile_sync:admin:sync_configs:edit:profile_column:group_auto_join"),
+	"group_auto_leave" => elgg_echo("profile_sync:admin:sync_configs:edit:profile_column:group_auto_leave"),
 );
 foreach ($profile_fields as $metadata_name => $type) {
 	$lan_key = "profile:" . $metadata_name;
