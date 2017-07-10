@@ -63,10 +63,10 @@ class ProfileSyncCSVFolder extends ProfileSyncCSV {
 		}
 		$this->dir_iterator->next();
 		$file = $this->dir_iterator->current();
-		if ($file) {
+		if (!$file) {
 			return false;
 		}
-		
+				
 		while($file->getExtension() !== 'csv') {
 			$this->dir_iterator->next();
 			$file = $this->dir_iterator->current();
