@@ -9,6 +9,16 @@ class ProfileSyncCSVFolder extends ProfileSyncCSV {
 	
 	protected $dir_iterator;
 	
+	protected function initialize() {
+		$ia = elgg_set_ignore_access(true);
+		$this->datasource->csv_location = $this->datasource->csv_folder_location;
+		$this->datasource->csv_delimiter = $this->datasource->csv_folder_delimiter;
+		$this->datasource->csv_enclosure = $this->datasource->csv_folder_enclosure;
+		$this->datasource->csv_first_row = $this->datasource->csv_folder_first_row;
+		
+		elgg_set_ignore_access($ia);
+	}
+	
 	/**
 	 * Connect to the datasource
 	 *
