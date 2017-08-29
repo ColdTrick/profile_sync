@@ -28,6 +28,9 @@ class Cron {
 			return;
 		}
 		
+		echo "Stating ProfileSync: {$type}" . PHP_EOL;
+		elgg_log("Stating ProfileSync: {$type}", 'NOTICE');
+		
 		// get current memory limit
 		$old_memory_limit = ini_get('memory_limit');
 		
@@ -58,5 +61,8 @@ class Cron {
 		
 		// reset memory limit
 		ini_set('memory_limit', $old_memory_limit);
+		
+		echo "Done with ProfileSync: {$type}" . PHP_EOL;
+		elgg_log("Done with ProfileSync: {$type}", 'NOTICE');
 	}
 }
