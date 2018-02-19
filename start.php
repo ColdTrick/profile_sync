@@ -33,13 +33,4 @@ function profile_sync_init() {
 	elgg_register_plugin_hook_handler('register', 'menu:entity', '\ColdTrick\ProfileSync\EntityMenu::addDataSourceMenus');
 	elgg_register_plugin_hook_handler('register', 'menu:entity', '\ColdTrick\ProfileSync\EntityMenu::addSyncConfigMenus');
 	elgg_register_plugin_hook_handler('cron', 'all', '\ColdTrick\ProfileSync\Cron::runSyncs');
-	elgg_register_plugin_hook_handler('permissions_check:comment', 'object', '\ColdTrick\ProfileSync\Comments::disallowComments');
-	
-	// register actions
-	elgg_register_action('profile_sync/datasource/edit', dirname(__FILE__) . '/actions/datasource/edit.php', 'admin');
-	elgg_register_action('profile_sync/datasource/delete', elgg_get_root_path() . '/actions/entities/delete.php', 'admin');
-	elgg_register_action('profile_sync/sync_config', dirname(__FILE__) . '/actions/sync_config/edit.php', 'admin');
-	elgg_register_action('profile_sync/sync_config/delete', elgg_get_root_path() . '/actions/entities/delete.php', 'admin');
-	elgg_register_action('profile_sync/sync_config/run', dirname(__FILE__) . '/actions/sync_config/run.php', 'admin');
-	
 }

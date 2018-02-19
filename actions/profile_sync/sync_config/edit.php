@@ -26,36 +26,29 @@ $notify_user = (int) get_input('notify_user');
 $log_cleanup_count = sanitise_int(get_input('log_cleanup_count'), false);
 
 if (empty($guid) && empty($datasource_guid)) {
-	register_error(elgg_echo('profile_sync:action:sync_config:edit:error:guid'));
-	forward(REFERER);
+	return elgg_error_response(elgg_echo('profile_sync:action:sync_config:edit:error:guid'));
 }
 
 if (empty($title)) {
-	register_error(elgg_echo('profile_sync:action:error:title'));
-	forward(REFERER);
+	return elgg_error_response(elgg_echo('profile_sync:action:error:title'));
 }
 
 if (($datasource_id === '') || empty($profile_id)) {
-	register_error(elgg_echo('profile_sync:action:sync_config:edit:error:unique_id'));
-	forward(REFERER);
+	return elgg_error_response(elgg_echo('profile_sync:action:sync_config:edit:error:unique_id'));
 }
 
 if ((!$ban_user && !$unban_user) && (empty($datasource_cols) || empty($profile_cols))) {
-	register_error(elgg_echo('profile_sync:action:sync_config:edit:error:fields'));
-	forward(REFERER);
+	return elgg_error_response(elgg_echo('profile_sync:action:sync_config:edit:error:fields'));
 }
 
 if ($create_user && $ban_user) {
-	register_error(elgg_echo('profile_sync:action:sync_config:edit:error:create_ban'));
-	forward(REFERER);
+	return elgg_error_response(elgg_echo('profile_sync:action:sync_config:edit:error:create_ban'));
 }
 if ($create_user && $unban_user) {
-	register_error(elgg_echo('profile_sync:action:sync_config:edit:error:create_unban'));
-	forward(REFERER);
+	return elgg_error_response(elgg_echo('profile_sync:action:sync_config:edit:error:create_unban'));
 }
 if ($ban_user && $unban_user) {
-	register_error(elgg_echo('profile_sync:action:sync_config:edit:error:ban_unban'));
-	forward(REFERER);
+	return elgg_error_response(elgg_echo('profile_sync:action:sync_config:edit:error:ban_unban'));
 }
 
 // translate datasource_cols and profile_cols
@@ -74,29 +67,25 @@ foreach ($datasource_cols as $index => $datasource_col_name) {
 }
 
 if ((!$ban_user && !$unban_user) && empty($sync_match)) {
-	register_error(elgg_echo('profile_sync:action:sync_config:edit:error:fields'));
-	forward(REFERER);
+	return elgg_error_response(elgg_echo('profile_sync:action:sync_config:edit:error:fields'));
 }
 
-if (empty($guid)) {
-	$site = elgg_get_site_entity();
-	
-	$entity = new ElggObject();
-	$entity->subtype = 'profile_sync_config';
-	$entity->owner_guid = $site->getGUID();
-	$entity->container_guid = $datasource_guid;
-	$entity->access_id = ACCESS_PUBLIC;
-	
-	if (!$entity->save()) {
-		register_error(elgg_echo('save:fail'));
-		forward(REFERER);
+if (!empty($guid)) {
+	$entity = get_entity($guid);
+	if (!$entity instanceof ProfileSyncConfig || !$entity->canEdit()) {
+		return elgg_error_response(elgg_echo('profile_sync:action:sync_config:edit:error:entity'));
 	}
 } else {
-	$entity = get_entity($guid);
-	if (!elgg_instanceof($entity, 'object', 'profile_sync_config')) {
-		register_error(elgg_echo('profile_sync:action:sync_config:edit:error:entity'));
-		forward(REFERER);
+	$entity = new ProfileSyncConfig();
+	$entity->container_guid = $datasource_guid;
+	
+	if (!$entity->save()) {
+		return elgg_error_response(elgg_echo('save:fail'));
 	}
+}
+
+if (!$entity instanceof ProfileSyncConfig) {
+	return elgg_error_response(elgg_echo('profile_sync:action:sync_config:edit:error:entity'));
 }
 
 // save all the data
@@ -115,7 +104,8 @@ $entity->notify_user = $notify_user;
 
 $entity->log_cleanup_count = $log_cleanup_count;
 
-$entity->save();
+if (!$entity->save()) {
+	return elgg_error_response(elgg_echo('save:fail'));
+}
 
-system_message(elgg_echo('admin:configuration:success'));
-forward(REFERER);
+return elgg_ok_response('', elgg_echo('admin:configuration:success'));

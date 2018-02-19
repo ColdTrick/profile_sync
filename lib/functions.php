@@ -6,18 +6,14 @@
 /**
  * Run the profile synchronization based on the provided configuration
  *
- * @param ElggObject $sync_config The sync configuration
+ * @param ProfileSyncConfig $sync_config The sync configuration
  *
  * @return void
  */
-function profile_sync_proccess_configuration(ElggObject $sync_config) {
-	
-	if (!elgg_instanceof($sync_config, 'object', 'profile_sync_config')) {
-		return;
-	}
+function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 	
 	$datasource = $sync_config->getContainerEntity();
-	if (!elgg_instanceof($datasource, 'object', 'profile_sync_datasource')) {
+	if (!$datasource instanceof ProfileSyncDatasource) {
 		return;
 	}
 	
@@ -132,10 +128,6 @@ function profile_sync_proccess_configuration(ElggObject $sync_config) {
 	
 	// we want to cache entity metadata on first __get()
 	$metadata_cache = _elgg_services()->metadataCache;
-	if ($metadata_cache instanceof ElggVolatileMetadataCache) {
-		// elgg 1.10
-		$metadata_cache->setIgnoreAccess(false);
-	}
 	
 	$counters = [
 		'source rows' => 0,
@@ -490,7 +482,7 @@ function profile_sync_proccess_configuration(ElggObject $sync_config) {
 		elgg_trigger_event('update_user', 'profile_sync', $update_event_params);
 		
 		// cache cleanup
-		_elgg_services()->entityCache->remove($user->getGUID());
+		_elgg_services()->entityCache->delete($user->getGUID());
 		$metadata_cache->clear($user->getGUID());
 	}
 	
@@ -512,13 +504,7 @@ function profile_sync_proccess_configuration(ElggObject $sync_config) {
 	// restore access
 	elgg_set_ignore_access($ia);
 	
-	if ($metadata_cache instanceof ElggVolatileMetadataCache) {
-		// elgg 1.10
-		$metadata_cache->unsetIgnoreAccess();
-	} elseif ($metadata_cache instanceof \Elgg\Cache\MetadataCache) {
-		// elgg 1.11+
-		$metadata_cache->clearAll();
-	}
+	$metadata_cache->clearAll();
 }
 
 /**
@@ -570,16 +556,12 @@ function profile_sync_log($sync_config_guid, $text, $close = false) {
 /**
  * Get the sync logs, newest log first
  *
- * @param ElggObject $sync_config the sync config to get the logs for
- * @param bool       $with_label  add readable labels to the output (default: true)
+ * @param ProfileSyncConfig $sync_config the sync config to get the logs for
+ * @param bool              $with_label  add readable labels to the output (default: true)
  *
  * @return false|array
  */
-function profile_sync_get_ordered_log_files(ElggObject $sync_config, $with_label = true) {
-	
-	if (!elgg_instanceof($sync_config, 'object', 'profile_sync_config')) {
-		return false;
-	}
+function profile_sync_get_ordered_log_files(ProfileSyncConfig $sync_config, $with_label = true) {
 	
 	$with_label = (bool) $with_label;
 	
@@ -620,15 +602,11 @@ function profile_sync_get_ordered_log_files(ElggObject $sync_config, $with_label
 /**
  * Cleanup the oldes logfiles of a sync config, based of the settings of the sync config
  *
- * @param ElggObject $sync_config the sync config to cleanup the logs for
+ * @param ProfileSyncConfig $sync_config the sync config to cleanup the logs for
  *
  * @return bool
  */
-function profile_sync_cleanup_logs(ElggObject $sync_config) {
-	
-	if (!elgg_instanceof($sync_config, 'object', 'profile_sync_config')) {
-		return false;
-	}
+function profile_sync_cleanup_logs(ProfileSyncConfig $sync_config) {
 	
 	$log_cleanup_count = sanitise_int($sync_config->log_cleanup_count, false);
 	if (empty($log_cleanup_count)) {
@@ -686,14 +664,14 @@ function profile_sync_convert_string_encoding($string) {
 /**
  * Find a user based on a profile field and it's value
  *
- * @param stirng     $profile_field profile field name
- * @param string     $field_value   profile field value
- * @param ElggObject $sync_config   sync configuration (for logging)
- * @param array      $log_counters  array with logging counters
+ * @param string            $profile_field profile field name
+ * @param string            $field_value   profile field value
+ * @param ProfileSyncConfig $sync_config   sync configuration (for logging)
+ * @param array             $log_counters  array with logging counters
  *
  * @return false|ElggUser
  */
-function profile_sync_find_user($profile_field, $field_value, ElggObject $sync_config, &$log_counters) {
+function profile_sync_find_user($profile_field, $field_value, ProfileSyncConfig $sync_config, &$log_counters) {
 	static $profile_fields;
 	static $dbprefix;
 	
@@ -702,10 +680,6 @@ function profile_sync_find_user($profile_field, $field_value, ElggObject $sync_c
 	}
 	if (!isset($dbprefix)) {
 		$dbprefix = elgg_get_config('dbprefix');
-	}
-	
-	if (!elgg_instanceof($sync_config, 'object', 'profile_sync_config')) {
-		return false;
 	}
 	
 	if (empty($log_counters) || !is_array($log_counters)) {

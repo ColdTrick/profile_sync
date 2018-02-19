@@ -5,12 +5,12 @@
 
 $guid = (int) get_input('guid');
 if (empty($guid)) {
-	forward(REFERER);
+	return elgg_error_response(elgg_echo('error:missing_data'));
 }
 
 $entity = get_entity($guid);
-if (!elgg_instanceof($entity, 'object', 'profile_sync_config')) {
-	forward(REFERER);
+if (!$entity instanceof ProfileSyncConfig) {
+	return elgg_error_response(elgg_echo('actionunauthorized'));
 }
 
 // get current memory limit
@@ -30,6 +30,4 @@ profile_sync_cleanup_logs($entity);
 // reset memory limit
 ini_set('memory_limit', $old_memory_limit);
 
-system_message(elgg_echo('profile_sync:action:sync_config:run'));
-
-forward(REFERER);
+return elgg_ok_response('', elgg_echo('profile_sync:action:sync_config:run'));

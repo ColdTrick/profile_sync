@@ -7,27 +7,21 @@ class EntityMenu {
 	/**
 	 * Add menu items to the datasource entity_menu
 	 *
-	 * @param string          $hook         the name of the hook
-	 * @param string          $type         the type of the hook
-	 * @param \ElggMenuItem[] $return_value current return value
-	 * @param array           $params       supplied params
+	 * @param \Elgg\Hook $hook 'register', 'menu:entity'
 	 *
 	 * @return void|\ElggMenuItem[]
 	 */
-	public static function addDataSourceMenus($hook, $type, $return_value, $params) {
+	public static function addDataSourceMenus(\Elgg\Hook $hook) {
 		
-		$entity = elgg_extract('entity', $params);
-		if (!($entity instanceof \ElggObject)) {
-			return;
-		}
-		
-		if (!elgg_instanceof($entity, 'object', 'profile_sync_datasource')) {
+		$entity = $hook->getEntityParam();
+		if (!$entity instanceof \ProfileSyncDatasource) {
 			return;
 		}
 		
 		elgg_load_js('lightbox');
 		elgg_load_css('lightbox');
 		
+		$return_value = $hook->getValue();
 		foreach ($return_value as $key => $menu_item) {
 			
 			switch ($menu_item->getName()) {
@@ -59,27 +53,21 @@ class EntityMenu {
 	/**
 	 * Add menu items to the sync_config entity_menu
 	 *
-	 * @param string          $hook         the name of the hook
-	 * @param string          $type         the type of the hook
-	 * @param \ElggMenuItem[] $return_value current return value
-	 * @param array           $params       supplied params
+	 * @param \Elgg\Hook $hook 'register', 'menu:entity'
 	 *
 	 * @return void|\ElggMenuItem[]
 	 */
-	public static function addSyncConfigMenus($hook, $type, $return_value, $params) {
+	public static function addSyncConfigMenus(\Elgg\Hook $hook) {
 		
-		$entity = elgg_extract('entity', $params);
-		if (!($entity instanceof \ElggObject)) {
-			return;
-		}
-		
-		if (!elgg_instanceof($entity, 'object', 'profile_sync_config')) {
+		$entity = $hook->getEntityParam();
+		if (!($entity instanceof \ProfileSyncConfig)) {
 			return;
 		}
 		
 		elgg_load_js('lightbox');
 		elgg_load_css('lightbox');
 		
+		$return_value = $hook->getValue();
 		foreach ($return_value as $key => $menu_item) {
 			$name = $menu_item->getName();
 			switch ($name) {

@@ -2,24 +2,28 @@
 
 /**
  * ProfileSync defines the functions available for synchronization
- *
- * @package ProfileSync
- *
  */
 abstract class ProfileSync {
 	
+	/**
+	 * @var ProfileSyncDatasource
+	 */
 	protected $datasource;
+	
+	/**
+	 * @var int
+	 */
 	protected $lastrun;
 	
 	/**
 	 * Create a connection to a datasource
 	 *
-	 * @param ElggObject $datasource the datasource configuration
-	 * @param int        $lastrun    the timestamp of the sync config last run
+	 * @param ProfileSyncDatasource $datasource the datasource configuration
+	 * @param int                   $lastrun    the timestamp of the sync config last run
 	 *
 	 * @return void
 	 */
-	public function __construct(ElggObject $datasource, $lastrun = 0) {
+	public function __construct(ProfileSyncDatasource $datasource, $lastrun = 0) {
 		$this->datasource = $datasource;
 		$this->lastrun = (int) $lastrun;
 	}
@@ -27,20 +31,10 @@ abstract class ProfileSync {
 	/**
 	 * Fetch the datasource object
 	 *
-	 * @return false|ElggObject
+	 * @return ProfileSyncDatasource
 	 */
 	protected function getDatasource() {
-		
-		$datasource = $this->datasource;
-		if (empty($datasource)) {
-			return false;
-		}
-		
-		if (!elgg_instanceof($datasource, 'object', 'profile_sync_datasource')) {
-			return false;
-		}
-		
-		return $datasource;
+		return $this->datasource;
 	}
 	
 	/**

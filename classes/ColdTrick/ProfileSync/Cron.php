@@ -7,14 +7,11 @@ class Cron {
 	/**
 	 * Listen to the cron to perform sync tasks
 	 *
-	 * @param string $hook         the name of the hook
-	 * @param string $type         the type of the hook
-	 * @param string $return_value current return value
-	 * @param array  $params       supplied params
+	 * @param \Elgg\Hook $hook 'cron', 'all'
 	 *
 	 * @return void
 	 */
-	public static function runSyncs($hook, $type, $return_value, $params) {
+	public static function runSyncs(\Elgg\Hook $hook) {
 		
 		$allowed_intervals = [
 			'hourly',
@@ -24,12 +21,13 @@ class Cron {
 			'yearly',
 		];
 		
-		if (!in_array($type, $allowed_intervals)) {
+		$interval = $hook->getType();
+		if (!in_array($interval, $allowed_intervals)) {
 			return;
 		}
 		
-		echo "Stating ProfileSync: {$type}" . PHP_EOL;
-		elgg_log("Stating ProfileSync: {$type}", 'NOTICE');
+		echo "Stating ProfileSync: {$interval}" . PHP_EOL;
+		elgg_log("Stating ProfileSync: {$interval}", 'NOTICE');
 		
 		// get current memory limit
 		$old_memory_limit = ini_get('memory_limit');
@@ -43,11 +41,11 @@ class Cron {
 		// get sync configs
 		$options = [
 			'type' => 'object',
-			'subtype' => 'profile_sync_config',
+			'subtype' => \ProfileSyncConfig::SUBYPE,
 			'limit' => false,
 			'metadata_name_value_pairs' => [
 				'name' => 'schedule',
-				'value' => $type,
+				'value' => $interval,
 			],
 		];
 		$batch = new \ElggBatch('elgg_get_entities_from_metadata', $options);
@@ -62,7 +60,7 @@ class Cron {
 		// reset memory limit
 		ini_set('memory_limit', $old_memory_limit);
 		
-		echo "Done with ProfileSync: {$type}" . PHP_EOL;
-		elgg_log("Done with ProfileSync: {$type}", 'NOTICE');
+		echo "Done with ProfileSync: {$interval}" . PHP_EOL;
+		elgg_log("Done with ProfileSync: {$interval}", 'NOTICE');
 	}
 }
