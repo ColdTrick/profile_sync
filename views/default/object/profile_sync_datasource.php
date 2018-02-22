@@ -1,13 +1,16 @@
 <?php
 
 $entity = elgg_extract('entity', $vars);
+if (!$entity instanceof ProfileSyncDatasource) {
+	return;
+}
 
-echo elgg_view_menu('entity', [
-	'entity' => $entity,
-	'handler' => 'profile_sync/datasource',
-	'class' => 'elgg-menu-hz',
-	'sort_by' => 'priority',
-]);
+$title = $entity->getDisplayName();
+$title .= ' (' . elgg_echo('profile_sync:admin:datasources:type:' . $entity->datasource_type) . ')';
 
-echo $entity->title;
-echo ' (' . elgg_echo('profile_sync:admin:datasources:type:' . $entity->datasource_type) . ')';
+$params = [
+	'title' => $title,
+	'subtitle' => false,
+];
+$params = $params + $vars;
+echo elgg_view('object/elements/summary', $params);

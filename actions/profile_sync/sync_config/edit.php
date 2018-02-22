@@ -4,7 +4,7 @@
  */
 
 $guid = (int) get_input('guid');
-$datasource_guid = (int) get_input('datasource_guid');
+$container_guid = (int) get_input('container_guid');
 
 $title = get_input('title');
 
@@ -25,7 +25,7 @@ $unban_user = (int) get_input('unban_user');
 $notify_user = (int) get_input('notify_user');
 $log_cleanup_count = sanitise_int(get_input('log_cleanup_count'), false);
 
-if (empty($guid) && empty($datasource_guid)) {
+if (empty($guid) && empty($container_guid)) {
 	return elgg_error_response(elgg_echo('profile_sync:action:sync_config:edit:error:guid'));
 }
 
@@ -77,7 +77,7 @@ if (!empty($guid)) {
 	}
 } else {
 	$entity = new ProfileSyncConfig();
-	$entity->container_guid = $datasource_guid;
+	$entity->container_guid = $container_guid;
 	
 	if (!$entity->save()) {
 		return elgg_error_response(elgg_echo('save:fail'));

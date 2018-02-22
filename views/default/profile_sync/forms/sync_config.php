@@ -2,20 +2,22 @@
 
 $sync_config_guid = (int) get_input('guid');
 $sync_config = get_entity($sync_config_guid);
-if (!elgg_instanceof($sync_config, 'object', 'profile_sync_config')) {
-	$sync_config = false;
+if (!$sync_config instanceof ProfileSyncConfig) {
+	$sync_config = null;
 	$datasource_guid = (int) get_input('datasource_guid');
 	$title = elgg_echo('profile_sync:admin:sync_configs:add');
 } else {
-	$datasource_guid = (int) $sync_config->getContainerGUID();
-	$title = $sync_config->title;
+	$datasource_guid = $sync_config->container_guid;
+	$title = elgg_echo('profile_sync:admin:sync_configs:edit', [$sync_config->getDisplayName()]);
 }
 
 $datasource = get_entity($datasource_guid);
-if (!elgg_instanceof($datasource, 'object', 'profile_sync_datasource')) {
+if (!$datasource instanceof ProfileSyncDatasource) {
 	return;
 }
 
-$body = elgg_view_form('profile_sync/sync_config', [], ['sync_config' => $sync_config, 'datasource' => $datasource]);
+$body_vars = profile_sync_prepare_sync_config_form_vars($datasource, $sync_config);
 
-echo elgg_view_module('inline', $title, $body, ['class' => 'mvn profile-sync-config-wrapper']);
+$body = elgg_view_form('profile_sync/sync_config/edit', [], $body_vars);
+
+echo elgg_view_module('info', $title, $body);

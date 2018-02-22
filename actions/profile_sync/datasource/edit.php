@@ -1,5 +1,7 @@
 <?php
 
+elgg_make_sticky_form('datasource/edit');
+
 $guid = (int) get_input('guid');
 $params = get_input('params', [], false);
 $title = get_input('title');
@@ -57,5 +59,7 @@ foreach ($params as $key => $param) {
 if (!$entity->save()) {
 	return elgg_error_response(elgg_echo('save:fail'));
 }
+
+elgg_clear_sticky_form('datasource/edit');
 
 return elgg_ok_response('', elgg_echo('admin:configuration:success'));

@@ -838,3 +838,98 @@ function profile_sync_get_profile_field_access($user_guid, $profile_field, $defa
 	
 	return elgg_extract($profile_field, $field_access, $default_access);
 }
+
+/**
+ * Prepare form vars for a datasource
+ *
+ * @param ProfileSyncDatasource $entity the datasource to edit
+ *
+ * @return array
+ */
+function profile_sync_prepare_datasource_form_vars(ProfileSyncDatasource $entity = null) {
+	
+	$result = [
+		'title' => '',
+		'datasource_type' => '',
+		
+		// csv settings
+		'csv_location' => '',
+		'csv_delimiter' => ',',
+		'csv_enclosure' => '"',
+		'csv_first_row' => '',
+		
+		// mysql settings
+		'dbhost' => '',
+		'dbport' => 3306,
+		'dbname' => '',
+		'dbusername' => '',
+		'dbpassword' => '',
+		'dbquery' => '',
+	];
+	
+	if ($entity instanceof ProfileSyncDatasource) {
+		
+		foreach ($result as $name => $value) {
+			$result[$name] = $entity->$name;
+		}
+		
+		$result['entity'] = $entity;
+	}
+	
+	$sticky_values = elgg_get_sticky_values('datasource/edit');
+	if (!empty($sticky_values)) {
+		foreach ($sticky_values as $name => $value) {
+			$result[$name] = $value;
+		}
+		
+		elgg_clear_sticky_form('datasource/edit');
+	}
+	
+	return $result;
+}
+
+function profile_sync_prepare_sync_config_form_vars(ProfileSyncDatasource $source, ProfileSyncConfig $config = null) {
+	
+	$result = [
+		'title' => '',
+		'schedule' => 'daily',
+		'datasource_id' => '',
+		'datasource_id_fallback' => '',
+		'profile_id' => '',
+		'profile_id_fallback' => '',
+		'create_user' => false,
+		'ban_user' => false,
+		'unban_user' => false,
+		'notify_user' => false,
+		'log_cleanup_count' => null,
+	];
+	
+	if ($config instanceof ProfileSyncConfig) {
+		foreach ($result as $name => $default) {
+			
+			$value = $config->$name;
+			if (is_bool($default)) {
+				$value = (bool) $default;
+			}
+			
+			$result[$name] = $value;
+		}
+		
+		$result['entity'] = $config;
+	}
+	
+	$sticky_values = elgg_get_sticky_values('sync_config/edit');
+	if (!empty($sticky_values)) {
+		foreach ($sticky_values as $name => $value) {
+			$result[$name] = $value;
+		}
+		
+		elgg_clear_sticky_form('sync_config/edit');
+	}
+	
+	$result['profile_sync'] = $source->getProfileSync();
+	$result['container_guid'] = $source->guid;
+	$result['datasource'] = $source;
+	
+	return $result;
+}

@@ -98,21 +98,6 @@ elgg.profile_sync.admin.add_field_config = function() {
 	return false
 };
 
-elgg.profile_sync.admin.datasource_type = function() {
-	var $form = $('form.elgg-form-profile-sync-datasource-edit');
-
-	$form.find(".profile-sync-datasource-type").hide();
-	var type = $('#profile-sync-edit-datasource-type').val();
-	if (type !== "") {
-		$form.find(".profile-sync-datasource-type-" + type).show();
-	}
-
-	$form.find('[required]').prop('disabled', true);
-	$form.find('[required]:visible').prop('disabled', false);
-
-	$.colorbox.resize();
-};
-
 /**
  * Register callbacks when the document is done
  *
@@ -122,10 +107,7 @@ elgg.profile_sync.admin.init = function() {
 	$(document).on("change", "#profile-sync-edit-sync-create-user", elgg.profile_sync.admin.check_create_user);
 	$(document).on("change", "#profile-sync-edit-sync-ban-user", elgg.profile_sync.admin.check_ban_user);
 	$(document).on("change", "#profile-sync-edit-sync-unban-user", elgg.profile_sync.admin.check_unban_user);
-	$(document).on("change", "#profile-sync-edit-datasource-type", elgg.profile_sync.admin.datasource_type);
 	$(document).on("click", "#profile-sync-edit-sync-add-field", elgg.profile_sync.admin.add_field_config);
-	$(document).bind("cbox_complete", elgg.profile_sync.admin.datasource_type);
 };
-
 
 elgg.register_hook_handler("init", "system", elgg.profile_sync.admin.init);

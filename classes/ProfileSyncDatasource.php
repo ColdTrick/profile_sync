@@ -29,4 +29,21 @@ class ProfileSyncDatasource extends ElggObject {
 		
 		return parent::canComment($user_guid, $default);
 	}
+	
+	/**
+	 * Get the ProfileSync for this datasource
+	 *
+	 * @return ProfileSync|false
+	 */
+	public function getProfileSync() {
+		
+		switch ($this->datasource_type) {
+			case 'csv':
+				return new ProfileSyncCSV($this);
+			case 'mysql':
+				return new ProfileSyncMySQL($this);
+		}
+		
+		return false;
+	}
 }

@@ -1,56 +1,60 @@
 <?php
 
-$csv_location = '';
-$csv_delimiter = ',';
-$csv_enclosure = '"';
-$csv_first_row = false;
+$class = [
+	'profile-sync-datasource-type',
+	'profile-sync-datasource-type-csv',
+];
 
-$entity = elgg_extract('entity', $vars);
-$class = ['profile-sync-datasource-type', 'profile-sync-datasource-type-csv'];
-if ($entity && ($entity->datasource_type === 'csv')) {
-	$csv_location = $entity->csv_location;
-	$csv_delimiter = $entity->csv_delimiter;
-	$csv_enclosure = $entity->csv_enclosure;
-	$csv_first_row = (bool) $entity->csv_first_row;
-} else {
+$disabled = false;
+if (elgg_extract('datasource_type', $vars) !== 'csv') {
+	$disabled = true;
 	$class[] = 'hidden';
 }
 
-$result = '';
+$fields = [];
 
-$input = elgg_format_element('label', [], elgg_echo('profile_sync:admin:datasources:edit:csv:location'));
-$input .= elgg_view('input/text', [
+$fields[] = [
+	'#type' => 'text',
+	'#label' => elgg_echo('profile_sync:admin:datasources:edit:csv:location'),
 	'name' => 'params[csv_location]',
-	'value' => $csv_location,
+	'value' => elgg_extract('csv_location', $vars),
 	'required' => true,
-]);
-$result .= elgg_format_element('div', [], $input);
+	'disabled' => $disabled,
+];
 
-$input = elgg_format_element('label', [], elgg_echo('profile_sync:admin:datasources:edit:csv:delimiter'));
-$input .= elgg_view('input/text', [
+$fields[] = [
+	'#type' => 'text',
+	'#label' => elgg_echo('profile_sync:admin:datasources:edit:csv:delimiter'),
 	'name' => 'params[csv_delimiter]',
-	'value' => $csv_delimiter,
-	'maxlength' => 1,
+	'value' => elgg_extract('csv_delimiter', $vars),
+	'max_length' => 1,
 	'required' => true,
-]);
-$result .= elgg_format_element('div', [], $input);
+	'disabled' => $disabled,
+];
 
-$input = elgg_format_element('label', [], elgg_echo('profile_sync:admin:datasources:edit:csv:enclosure'));
-$input .= elgg_view('input/text', [
+$fields[] = [
+	'#type' => 'text',
+	'#label' => elgg_echo('profile_sync:admin:datasources:edit:csv:enclosure'),
 	'name' => 'params[csv_enclosure]',
-	'value' => $csv_enclosure,
-	'maxlength' => 1,
+	'value' => elgg_extract('csv_enclosure', $vars),
+	'max_length' => 1,
 	'required' => true,
-]);
-$result .= elgg_format_element('div', [], $input);
+	'disabled' => $disabled,
+];
 
-$input = elgg_view('input/checkbox', [
+$fields[] = [
+	'#type' => 'checkbox',
+	'#label' => elgg_echo('profile_sync:admin:datasources:edit:csv:first_row'),
 	'name' => 'params[csv_first_row]',
-	'value' => '1',
-	'checked' => $csv_first_row,
-	'class' => 'mrs',
-]);
-$input .= elgg_format_element('label', [], elgg_echo('profile_sync:admin:datasources:edit:csv:first_row'));
-$result .= elgg_format_element('div', [], $input);
+	'default' => 0,
+	'value' => 1,
+	'checked' => (bool) elgg_extract('csv_first_row', $vars),
+	'switch' => true,
+];
 
-echo elgg_format_element('div', ['class' => $class], $result);
+echo elgg_view_field([
+	'#type' => 'fieldset',
+	'#class' => $class,
+	'legend' => elgg_echo('profile_sync:admin:datasources:edit:csv'),
+	'fields' => $fields,
+]);

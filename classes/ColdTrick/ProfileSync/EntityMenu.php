@@ -18,34 +18,43 @@ class EntityMenu {
 			return;
 		}
 		
-		elgg_load_js('lightbox');
-		elgg_load_css('lightbox');
-		
 		$return_value = $hook->getValue();
-		foreach ($return_value as $key => $menu_item) {
-			
-			switch ($menu_item->getName()) {
-				case 'edit':
-					// edit in lightbox
-					$menu_item->setHref("ajax/view/profile_sync/forms/datasource?guid={$entity->getGUID()}");
-					$menu_item->setLinkClass('elgg-lightbox');
-					$menu_item->setTooltip('');
-					break;
-				case 'delete':
-					break;
-				default:
-					unset($return_value[$key]);
-					break;
-			}
+		
+		if ($entity->canEdit()) {
+			$return_value[] = \ElggMenuItem::factory([
+				'name' => 'edit',
+				'text' => elgg_echo('edit'),
+				'title' => elgg_echo('edit:this'),
+				'icon' => 'edit',
+				'href' => false,
+				'link_class' => 'elgg-lightbox',
+				'data-colorbox-opts' => json_encode([
+					'innerWidth' => '700px',
+					'href' => elgg_http_add_url_query_elements('ajax/view/profile_sync/forms/datasource', [
+						'guid' => $entity->guid,
+					]),
+				]),
+				'onClick' => '$(document).click();',
+			]);
 		}
 		
-		$return_value[] = \ElggMenuItem::factory([
-			'name' => 'add_sync_config',
-			'text' => elgg_echo('profile_sync:admin:sync_configs:add'),
-			'href' => "ajax/view/profile_sync/forms/sync_config?datasource_guid={$entity->getGUID()}",
-			'priority' => 10,
-			'link_class' => 'elgg-lightbox',
-		]);
+		if ($entity->canWriteToContainer(0, 'object', \ProfileSyncConfig::SUBYPE)) {
+			$return_value[] = \ElggMenuItem::factory([
+				'name' => 'add_sync_config',
+				'text' => elgg_echo('profile_sync:admin:sync_configs:add'),
+				'href' => false,
+				'icon' => 'plus',
+				'link_class' => 'elgg-lightbox',
+				'section' => 'config',
+				'data-colorbox-opts' => json_encode([
+					'innerWidth' => '900px',
+					'href' => elgg_http_add_url_query_elements('ajax/view/profile_sync/forms/sync_config', [
+						'datasource_guid' => $entity->guid,
+					]),
+				]),
+				'onClick' => '$(document).click();',
+			]);
+		}
 		
 		return $return_value;
 	}
@@ -63,9 +72,6 @@ class EntityMenu {
 		if (!($entity instanceof \ProfileSyncConfig)) {
 			return;
 		}
-		
-		elgg_load_js('lightbox');
-		elgg_load_css('lightbox');
 		
 		$return_value = $hook->getValue();
 		foreach ($return_value as $key => $menu_item) {
