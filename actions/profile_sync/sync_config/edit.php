@@ -8,7 +8,7 @@ elgg_make_sticky_form('sync_config/edit');
 $guid = (int) get_input('guid');
 $container_guid = (int) get_input('container_guid');
 
-$title = get_input('title');
+$title = elgg_get_title_input();
 
 $datasource_id = get_input('datasource_id');
 $datasource_id_fallback = get_input('datasource_id_fallback');

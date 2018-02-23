@@ -4,7 +4,7 @@ elgg_make_sticky_form('datasource/edit');
 
 $guid = (int) get_input('guid');
 $params = get_input('params', [], false);
-$title = get_input('title');
+$title = elgg_get_title_input();
 
 if (!is_array($params)) {
 	return elgg_error_response(elgg_echo('profile_sync:action:datasource:edit:error:params'));
