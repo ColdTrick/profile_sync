@@ -1,0 +1,19 @@
+/* Profile Sync admin CSS */
+.elgg-form-profile-sync-sync-config-edit {
+	
+	margin-bottom: 0;
+	
+	table {
+		margin-bottom: 0;
+	}
+	
+	select {
+		max-width: 200px;
+		font-size: 0.8rem;
+	}
+	
+	.profile-sync-arrow {
+		white-space: nowrap;
+		width: 1%;
+	}
+}

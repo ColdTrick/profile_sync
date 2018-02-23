@@ -3,6 +3,8 @@
  * create/edit a sync config
  */
 
+elgg_make_sticky_form('sync_config/edit');
+
 $guid = (int) get_input('guid');
 $container_guid = (int) get_input('container_guid');
 
@@ -23,7 +25,7 @@ $create_user = (int) get_input('create_user');
 $ban_user = (int) get_input('ban_user');
 $unban_user = (int) get_input('unban_user');
 $notify_user = (int) get_input('notify_user');
-$log_cleanup_count = sanitise_int(get_input('log_cleanup_count'), false);
+$log_cleanup_count = (int) get_input('log_cleanup_count');
 
 if (empty($guid) && empty($container_guid)) {
 	return elgg_error_response(elgg_echo('profile_sync:action:sync_config:edit:error:guid'));
@@ -107,5 +109,7 @@ $entity->log_cleanup_count = $log_cleanup_count;
 if (!$entity->save()) {
 	return elgg_error_response(elgg_echo('save:fail'));
 }
+
+elgg_clear_sticky_form('sync_config/edit');
 
 return elgg_ok_response('', elgg_echo('admin:configuration:success'));

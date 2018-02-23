@@ -1,5 +1,7 @@
 <?php
 
+elgg_require_js('profile_sync/sync_config/edit');
+
 /* @var $datasource ProfileSyncDatasource */
 $datasource = elgg_extract('datasource', $vars);
 $entity = elgg_extract('entity', $vars);
@@ -42,15 +44,6 @@ if (empty($datasource_cols) || empty($profile_fields)) {
 	]);
 	return;
 }
-
-$schedule_options = [
-	'hourly' => elgg_echo('profile_sync:interval:hourly'),
-	'daily' => elgg_echo('profile_sync:interval:daily'),
-	'weekly' => elgg_echo('profile_sync:interval:weekly'),
-	'monthly' => elgg_echo('profile_sync:interval:monthly'),
-	'yearly' => elgg_echo('profile_sync:interval:yearly'),
-	'manual' => elgg_echo('profile_sync:sync_configs:schedule:manual'),
-];
 
 $override_options = [
 	'1' => elgg_echo('option:yes'),
@@ -237,80 +230,93 @@ $template_row_data .= elgg_format_element('td', ['class' => 'center'], elgg_view
 $table_body .= elgg_format_element('tr', ['id' => 'profile-sync-field-config-template', 'class' => 'hidden'], $template_row_data);
 
 $table .= elgg_format_element('tbody', [], $table_body);
+$table = elgg_format_element('table', ['class' => 'elgg-table-alt'], $table);
 
-$fields = elgg_format_element('label', [], elgg_echo("profile_sync:admin:sync_configs:edit:fields"));
-
-$fields .= elgg_format_element('table', ['class' => 'elgg-table-alt'], $table);
-
-$fields .= elgg_format_element('div', [], elgg_view('output/url', [
+$link = elgg_view('output/url', [
 	'id' => 'profile-sync-edit-sync-add-field',
 	'text' => elgg_echo('add'),
-	'href' => '#',
-	'class' => 'float-alt',
-]));
+	'icon' => 'plus',
+	'href' => false,
+]);
 
 // fields to sync
 $field_class = ['profile-sync-edit-sync-fields'];
 if ($ban_user || $unban_user) {
 	$field_class[] = 'hidden';
 }
-echo elgg_format_element('div', ['class' => $field_class], $fields);
+// echo elgg_format_element('div', ['class' => $field_class], $fields);
+echo elgg_view_module('aside', elgg_echo("profile_sync:admin:sync_configs:edit:fields"), $table, [
+	'menu' => $link,
+	'class' => $field_class,
+]);
 
 // schedule
-$schedule_input = elgg_format_element('label', [], elgg_echo('profile_sync:admin:sync_configs:edit:schedule'));
-$schedule_input .= elgg_view('input/select', [
+echo elgg_view_field([
+	'#type' => 'select',
+	'#label' => elgg_echo('profile_sync:admin:sync_configs:edit:schedule'),
 	'name' => 'schedule',
-	'value' => $schedule,
-	'options_values' => $schedule_options,
-	'class' => 'mls',
+	'value' => elgg_extract('schedule', $vars),
+	'options_values' => [
+		'hourly' => elgg_echo('profile_sync:interval:hourly'),
+		'daily' => elgg_echo('profile_sync:interval:daily'),
+		'weekly' => elgg_echo('profile_sync:interval:weekly'),
+		'monthly' => elgg_echo('profile_sync:interval:monthly'),
+		'yearly' => elgg_echo('profile_sync:interval:yearly'),
+		'manual' => elgg_echo('profile_sync:sync_configs:schedule:manual'),
+	],
 ]);
-$body .= elgg_format_element('div', ['class' => 'mbs'], $schedule_input);
 
 // special actions
-$input = elgg_format_element('label', [], elgg_view('input/checkbox', [
-	'id' => 'profile-sync-edit-sync-create-user',
+echo elgg_view_field([
+	'#type' => 'checkbox',
+	'#label' => elgg_echo('profile_sync:admin:sync_configs:edit:create_user'),
+	'#help' => elgg_echo('profile_sync:admin:sync_configs:edit:create_user:description'),
 	'name' => 'create_user',
 	'value' => 1,
-	'checked' => $create_user,
-	'class' => 'mrs',
-]) . elgg_echo('profile_sync:admin:sync_configs:edit:create_user'));
-$input .= elgg_format_element('div', ['class' => 'elgg-subtext'], elgg_echo('profile_sync:admin:sync_configs:edit:create_user:description'));
-$input .= elgg_format_element('label', [], elgg_view('input/checkbox', [
+	'checked' => (bool) elgg_extract('create_user', $vars),
+	'switch' => true,
+	'class' => ['profile-sync-edit-sync-unique-checkbox'],
+]);
+echo elgg_view_field([
+	'#type' => 'checkbox',
+	'#label' => elgg_echo('profile_sync:admin:sync_configs:edit:notify_user'),
 	'name' => 'notify_user',
 	'value' => 1,
-	'checked' => $notify_user,
-	'class' => 'mlm mrs',
-]) . elgg_echo('profile_sync:admin:sync_configs:edit:notify_user'));
-$body .= elgg_format_element('div', ['class' => 'mbs'], $input);
-
-$input = elgg_format_element('label', [], elgg_view('input/checkbox', [
+	'checked' => (bool) elgg_extract('notify_user', $vars),
+	'switch' => true,
+]);
+echo elgg_view_field([
+	'#type' => 'checkbox',
+	'#label' => elgg_echo('profile_sync:admin:sync_configs:edit:ban_user'),
+	'#help' => elgg_echo('profile_sync:admin:sync_configs:edit:ban_user:description'),
 	'id' => 'profile-sync-edit-sync-ban-user',
 	'name' => 'ban_user',
 	'value' => 1,
-	'checked' => $ban_user,
-	'class' => 'mrs',
-]) . elgg_echo('profile_sync:admin:sync_configs:edit:ban_user'));
-$input .= elgg_format_element('div', ['class' => 'elgg-subtext'], elgg_echo('profile_sync:admin:sync_configs:edit:ban_user:description'));
-$body .= elgg_format_element('div', ['class' => 'mbs'], $input);
-
-$input = elgg_format_element('label', [], elgg_view('input/checkbox', [
+	'checked' => (bool) elgg_extract('ban_user', $vars),
+	'switch' => true,
+	'class' => ['profile-sync-edit-sync-unique-checkbox'],
+]);
+echo elgg_view_field([
+	'#type' => 'checkbox',
+	'#label' => elgg_echo('profile_sync:admin:sync_configs:edit:unban_user'),
+	'#help' => elgg_echo('profile_sync:admin:sync_configs:edit:unban_user:description'),
 	'id' => 'profile-sync-edit-sync-unban-user',
 	'name' => 'unban_user',
 	'value' => 1,
-	'checked' => $unban_user,
-	'class' => 'mrs',
-]) . elgg_echo('profile_sync:admin:sync_configs:edit:unban_user'));
-$input .= elgg_format_element('div', ['class' => 'elgg-subtext'], elgg_echo('profile_sync:admin:sync_configs:edit:unban_user:description'));
-$body .= elgg_format_element('div', ['class' => 'mbs'], $input);
+	'checked' => (bool) elgg_extract('unban_user', $vars),
+	'switch' => true,
+	'class' => ['profile-sync-edit-sync-unique-checkbox'],
+]);
 
 // log cleanup
-$input = elgg_format_element('label', [], elgg_echo('profile_sync:admin:sync_configs:edit:log_cleanup_count'));
-$input .= elgg_view('input/text', [
+echo elgg_view_field([
+	'#type' => 'number',
+	'#label' => elgg_echo('profile_sync:admin:sync_configs:edit:log_cleanup_count'),
+	'#help' => elgg_echo('profile_sync:admin:sync_configs:edit:log_cleanup_count:description'),
 	'name' => 'log_cleanup_count',
-	'value' => $log_cleanup_count,
+	'value' => elgg_extract('log_cleanup_count', $vars),
+	'min' => 0,
 ]);
-$input .= elgg_format_element('div', ['class' => 'elgg-subtext'], elgg_echo('profile_sync:admin:sync_configs:edit:log_cleanup_count:description'));
-$body .= elgg_format_element('div', ['class' => 'mbs'], $input);
 
 // form footer
 $footer = elgg_view_field([

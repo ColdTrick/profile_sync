@@ -2,13 +2,12 @@
 
 elgg_admin_gatekeeper();
 
-$guid = (int) get_input('guid');
-$entity = get_entity($guid);
-if (!elgg_instanceof($entity, 'object', 'profile_sync_config')) {
+$entity = elgg_extract('entity', $vars);
+if (!$entity instanceof ProfileSyncConfig) {
 	return;
 }
 
-$files = profile_sync_get_ordered_log_files($entity);
+$files = $entity->getOrderedLogFiles();
 if (empty($files)) {
 	echo elgg_echo('notfound');
 	return;
@@ -16,18 +15,27 @@ if (empty($files)) {
 
 $head = elgg_format_element('th', [], elgg_echo('profile_sync:interval:date'));
 $head .= elgg_format_element('th', [], '&nbsp;');
-$table = elgg_format_element('tr', [], $head);
+$head = elgg_format_element('tr', [], $head);
 
+$table = elgg_format_element('thead', [], $head);
+
+$rows = [];
 foreach ($files as $file => $datetime) {
-	$row_data = elgg_format_element('td', [], $datetime);
-	$row_data .= elgg_format_element('td', [], elgg_view('output/url', [
+	$row = [];
+	$row[] = elgg_format_element('td', [], $datetime);
+	$row[] = elgg_format_element('td', [], elgg_view('output/url', [
 		'text' => elgg_echo('show'),
-		'href' => 'ajax/view/profile_sync/view_log?guid=' . $entity->getGUID() . '&file=' . $file,
+		'href' => elgg_http_add_url_query_elements('ajax/view/profile_sync/view_log', [
+			'guid' => $entity->guid,
+			'file' => $file,
+		]),
 		'is_trusted' => true,
 		'class' => 'elgg-lightbox',
 	]));
-	$table .= elgg_format_element('tr', [], $row_data);
+	$rows[] = elgg_format_element('tr', [], implode(PHP_EOL, $row));
 }
+$table .= elgg_format_element('tbody', [], implode(PHP_EOL, $rows));
+
 $content = elgg_format_element('table', ['class' => 'elgg-table-alt'], $table);
 
-echo elgg_view_module('inline', elgg_echo('profile_sync:sync_logs:title', [$entity->title]), $content, ['class' => 'profile-sync-logs-wrapper']);
+echo elgg_view_module('info', elgg_echo('profile_sync:sync_logs:title', [$entity->getDisplayName()]), $content);

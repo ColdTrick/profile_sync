@@ -3,6 +3,8 @@
  * All helper functions are bundled here
  */
 
+use Elgg\Project\Paths;
+
 /**
  * Run the profile synchronization based on the provided configuration
  *
@@ -25,35 +27,28 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 	$ban_user = (bool) $sync_config->ban_user;
 	$unban_user = (bool) $sync_config->unban_user;
 	
-	profile_sync_log($sync_config->getGUID(), "Last run timestamp: {$lastrun} (" . date(elgg_echo('friendlytime:date_format'), $lastrun) . ")" . PHP_EOL);
+	$sync_config->log("Last run timestamp: {$lastrun} (" . date(elgg_echo('friendlytime:date_format'), $lastrun) . ")" . PHP_EOL);
 	
 	$profile_fields = elgg_get_config('profile_fields');
 	
 	if ((!$ban_user && !$unban_user && empty($sync_match)) || ($datasource_id === '') || empty($profile_id)) {
-		profile_sync_log($sync_config->getGUID(), 'Configuration error', true);
+		$sync_config->log('Configuration error', true);
 		return;
 	}
 	
 	if (!in_array($profile_id, ['name', 'username', 'email']) && !array_key_exists($profile_id, $profile_fields)) {
-		profile_sync_log($sync_config->getGUID(), "Invalid profile identifier: {$profile_id}", true);
+		$sync_config->log("Invalid profile identifier: {$profile_id}", true);
 		return;
 	}
 	
-	switch ($datasource->datasource_type) {
-		case 'mysql':
-			$sync_source = new ProfileSyncMySQL($datasource, $lastrun);
-			break;
-		case 'csv':
-			$sync_source = new ProfileSyncCSV($datasource, $lastrun);
-			break;
-		default:
-			profile_sync_log($sync_config->getGUID(), "Invalid datasource type: {$datasource->datasource_type}", true);
-			return;
-			break;
+	$sync_source = $datasource->getProfileSync();
+	if (!$sync_source instanceof ProfileSync) {
+		$sync_config->log("Invalid datasource type: {$datasource->datasource_type}", true);
+		return;
 	}
 	
 	if (!$sync_source->connect()) {
-		profile_sync_log($sync_config->getGUID(), 'Unable to connect to the datasource', true);
+		$sync_config->log('Unable to connect to the datasource', true);
 		return;
 	}
 	
@@ -68,7 +63,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 	$create_user_username = false;
 	
 	if ($create_user) {
-		profile_sync_log($sync_config->getGUID(), 'User creation is allowed');
+		$sync_config->log('User creation is allowed');
 		
 		foreach ($sync_match as $datasource_col => $datasource_config) {
 			list($datasource_col) = explode(PROFILE_SYNC_DATASOURCE_COL_SEPERATOR, $datasource_col);
@@ -87,34 +82,34 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 		}
 		
 		if (($create_user_name === false) || ($create_user_username === false) || ($create_user_email === false)) {
-			profile_sync_log($sync_config->getGUID(), 'Missing information to create users');
-			profile_sync_log($sync_config->getGUID(), "- name: {$create_user_name}");
-			profile_sync_log($sync_config->getGUID(), "- email: {$create_user_email}");
-			profile_sync_log($sync_config->getGUID(), "- username: {$create_user_username}");
+			$sync_config->log('Missing information to create users');
+			$sync_config->log("- name: {$create_user_name}");
+			$sync_config->log("- email: {$create_user_email}");
+			$sync_config->log("- username: {$create_user_username}");
 			$create_user = false;
 		}
 	}
 	
 	if ($ban_user) {
-		profile_sync_log($sync_config->getGUID(), 'Matching users will be banned');
+		$sync_config->log('Matching users will be banned');
 	}
 	
 	if ($unban_user) {
-		profile_sync_log($sync_config->getGUID(), 'Matching users will be unbanned');
+		$sync_config->log('Matching users will be unbanned');
 	}
 	
 	if ($ban_user && $create_user) {
-		profile_sync_log($sync_config->getGUID(), 'Both create and ban users is allowed, don\'t know what to do', true);
+		$sync_config->log('Both create and ban users is allowed, don\'t know what to do', true);
 		return;
 	}
 	
 	if ($unban_user && $create_user) {
-		profile_sync_log($sync_config->getGUID(), 'Both create and unban users is allowed, don\'t know what to do', true);
+		$sync_config->log('Both create and unban users is allowed, don\'t know what to do', true);
 		return;
 	}
 	
 	if ($ban_user && $unban_user) {
-		profile_sync_log($sync_config->getGUID(), 'Both ban and unban users is allowed, don\'t know what to do', true);
+		$sync_config->log('Both ban and unban users is allowed, don\'t know what to do', true);
 		return;
 	}
 	
@@ -150,7 +145,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 		// get base path
 		$csv_location = $datasource->csv_location;
 		$csv_filename = basename($csv_location);
-			
+		
 		$base_location = rtrim(str_ireplace($csv_filename, '', $csv_location), DIRECTORY_SEPARATOR);
 	}
 	
@@ -179,7 +174,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 		
 		// fallback user
 		if (empty($user) && ($datasource_id_fallback !== '') && !empty($source_row[$datasource_id_fallback]) && !empty($profile_id_fallback)) {
-// 			profile_sync_log($sync_config->getGUID(), "User not found: {$profile_id} => {$datasource_unique_id} trying fallback");
+// 			$sync_config->log("User not found: {$profile_id} => {$datasource_unique_id} trying fallback");
 			
 			$profile_used_id = $profile_id_fallback;
 			$datasource_used_id = $datasource_id_fallback;
@@ -202,7 +197,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 				$user_guid = register_user($username, $pwd, $name, $email);
 				if (!empty($user_guid)) {
 					$counters['user created']++;
-					profile_sync_log($sync_config->getGUID(), "Created user: {$name}");
+					$sync_config->log("Created user: {$name}");
 					
 					$user = get_user($user_guid);
 					
@@ -221,14 +216,14 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 				}
 			} catch (RegistrationException $r) {
 				$name = profile_sync_filter_var($source_row[$create_user_name]);
-				profile_sync_log($sync_config->getGUID(), "Failure creating user: {$name} - {$r->getMessage()}");
+				$sync_config->log("Failure creating user: {$name} - {$r->getMessage()}");
 			}
 		}
 		
 		// did we get a user
 		if (empty($user)) {
 			$counters['user not found']++;
-			profile_sync_log($sync_config->getGUID(), "User not found: {$profile_used_id} => {$datasource_unique_id}");
+			$sync_config->log("User not found: {$profile_used_id} => {$datasource_unique_id}");
 			continue;
 		} else {
 			$counters['processed users']++;
@@ -240,7 +235,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 			if (!$user->isBanned()) {
 				$counters['user banned']++;
 				$user->ban("Profile Sync: {$sync_config->title}");
-				profile_sync_log($sync_config->getGUID(), "User banned: {$user->name} ({$user->username})");
+				$sync_config->log("User banned: {$user->name} ({$user->username})");
 			}
 			
 			continue;
@@ -252,7 +247,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 			if ($user->isBanned()) {
 				$counters['user unbanned']++;
 				$user->unban();
-				profile_sync_log($sync_config->getGUID(), "User unbanned: {$user->name} ({$user->username})");
+				$sync_config->log("User unbanned: {$user->name} ({$user->username})");
 			}
 			
 			continue;
@@ -299,20 +294,20 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 						// new username, check for availability
 						if (get_user_by_username($value)) {
 							// already taken
-							profile_sync_log($sync_config->getGUID(), "New username: {$value} for {$user->name} is already taken");
+							$sync_config->log("New username: {$value} for {$user->name} is already taken");
 							continue(2);
 						}
 					}
 				case 'name':
 					if (empty($value)) {
 						$counters['empty attributes']++;
-						profile_sync_log($sync_config->getGUID(), "Empty user attribute: {$datasource_col} for user {$user->name}");
+						$sync_config->log("Empty user attribute: {$datasource_col} for user {$user->name}");
 						continue(2);
 					}
 					
 					if (isset($user->$profile_field) && !$override) {
 						// don't override profile field
-// 						profile_sync_log($sync_config->getGUID(), "Profile field already set: {$profile_field} for user {$user->name}");
+// 						$sync_config->log("Profile field already set: {$profile_field} for user {$user->name}");
 						continue(2);
 					}
 					
@@ -330,13 +325,13 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 					// get a user icon based on a relative file path/url
 					// only works with file based datasources (eg. csv)
 					if (!($sync_source instanceof ProfileSyncCSV)) {
-						profile_sync_log($sync_config->getGUID(), "Can't fetch relative user icon path in non CSV datasouces: trying user {$user->name}");
+						$sync_config->log("Can't fetch relative user icon path in non CSV datasouces: trying user {$user->name}");
 						continue(2);
 					}
 					
 					// make new icon path
 					if (!empty($value)) {
-						$value = sanitise_filepath($value, false); // prevent abuse (like ../../......)
+						$value = Paths::sanitize($value, false); // prevent abuse (like ../../......)
 						$value = ltrim($value, DIRECTORY_SEPARATOR); // remove beginning /
 						$value = $base_location . DIRECTORY_SEPARATOR . $value; // concat base location and rel path
 					}
@@ -346,7 +341,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 					
 					if (!empty($user->icontime) && !$override) {
 						// don't override icon
-// 						profile_sync_log($sync_config->getGUID(), "User already has an icon: {$user->name}");
+// 						$sync_config->log("User already has an icon: {$user->name}");
 						continue(2);
 					}
 					
@@ -358,7 +353,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 						
 					if (empty($value) && $user->icontime) {
 						// no icon, so unset current icon
-						profile_sync_log($sync_config->getGUID(), "Removing icon for user: {$user->name}");
+						$sync_config->log("Removing icon for user: {$user->name}");
 						
 						foreach ($icon_sizes as $size => $icon_info) {
 							$fh->setFilename("profile/{$user->getGUID()}{$size}.jpg");
@@ -375,19 +370,19 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 					// try to get the user icon
 					$icon_contents = file_get_contents($value);
 					if (empty($icon_contents)) {
-						profile_sync_log($sync_config->getGUID(), "Unable to fetch user icon: {$value} for user {$user->name}");
+						$sync_config->log("Unable to fetch user icon: {$value} for user {$user->name}");
 						continue(2);
 					}
 					
 					// was csv image updated
 					$csv_icontime = @filemtime($value);
 					if (($csv_icontime !== false) && isset($user->icontime)) {
-						$csv_icontime = sanitise_int($csv_icontime);
-						$icontime = sanitise_int($user->icontime);
+						$csv_icontime = (int) $csv_icontime;
+						$icontime = (int) $user->icontime;
 						
 						if ($csv_icontime === $icontime) {
 							// base image has same modified time as user icontime, so skipp
-// 							profile_sync_log($sync_config->getGUID(), "No need to update user icon for user: {$user->name}");
+// 							$sync_config->log("No need to update user icon for user: {$user->name}");
 							continue(2);
 						}
 					}
@@ -432,7 +427,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 					// check overrides
 					if (isset($user->$profile_field) && !$override) {
 						// don't override profile field
-// 						profile_sync_log($sync_config->getGUID(), "Profile field already set: {$profile_field} for user {$user->name}");
+// 						$sync_config->log("Profile field already set: {$profile_field} for user {$user->name}");
 						continue(2);
 					}
 					
@@ -455,7 +450,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 						continue(2);
 					}
 					
-// 					profile_sync_log($sync_config->getGUID(), "Updating {$profile_field} with value {$value} old value {$user->$profile_field}");
+// 					$sync_config->log("Updating {$profile_field} with value {$value} old value {$user->$profile_field}");
 					
 					// get the access of existing profile data
 					$access = profile_sync_get_profile_field_access($user->getGUID(), $profile_field, $access);
@@ -486,13 +481,13 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 		$metadata_cache->clear($user->getGUID());
 	}
 	
-	profile_sync_log($sync_config->getGUID(), PHP_EOL . 'End processing: ' . date(elgg_echo('friendlytime:date_format')) . PHP_EOL);
+	$sync_config->log(PHP_EOL . 'End processing: ' . date(elgg_echo('friendlytime:date_format')) . PHP_EOL);
 	foreach ($counters as $name => $count) {
-		profile_sync_log($sync_config->getGUID(), "{$name}: {$count}");
+		$sync_config->log("{$name}: {$count}");
 	}
 	
 	// close logfile
-	profile_sync_log($sync_config->getGUID(), null, true);
+	$sync_config->closeLog();
 	
 	// save last run
 	$sync_config->lastrun = time();
@@ -505,138 +500,6 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 	elgg_set_ignore_access($ia);
 	
 	$metadata_cache->clearAll();
-}
-
-/**
- * Write information to a log file
- *
- * @param int    $sync_config_guid the guid of a sync config where to write the log file
- * @param string $text             the text to log
- * @param bool   $close            close the log file (default: false)
- *
- * @return void
- */
-function profile_sync_log($sync_config_guid, $text, $close = false) {
-	static $file_handlers;
-	
-	if (!isset($file_handlers)) {
-		$file_handlers = [];
-	}
-	
-	$sync_config_guid = sanitise_int($sync_config_guid, false);
-	if (empty($sync_config_guid)) {
-		return;
-	}
-	
-	if (empty($text) && empty($close)) {
-		return;
-	}
-	
-	if (!isset($file_handlers[$sync_config_guid])) {
-		$log_file = new ElggFile();
-		$log_file->owner_guid = $sync_config_guid;
-		$log_file->setFilename(time() . '.log');
-		
-		$log_file->open('write');
-		$log_file->write('Start processing: ' . date(elgg_echo('friendlytime:date_format')) . PHP_EOL);
-		$file_handlers[$sync_config_guid] = $log_file->open('append');
-	}
-	
-	if (!empty($text)) {
-		fwrite($file_handlers[$sync_config_guid], $text . PHP_EOL);
-		elgg_log("Profile sync log({$sync_config_guid}): {$text}", 'NOTICE');
-	}
-	
-	if (!empty($close)) {
-		fclose($file_handlers[$sync_config_guid]);
-		unset($file_handlers[$sync_config_guid]);
-	}
-}
-
-/**
- * Get the sync logs, newest log first
- *
- * @param ProfileSyncConfig $sync_config the sync config to get the logs for
- * @param bool              $with_label  add readable labels to the output (default: true)
- *
- * @return false|array
- */
-function profile_sync_get_ordered_log_files(ProfileSyncConfig $sync_config, $with_label = true) {
-	
-	$with_label = (bool) $with_label;
-	
-	$fh = new ElggFile();
-	$fh->owner_guid = $sync_config->getGUID();
-	$fh->setFilename('temp');
-	
-	$dir = $fh->getFilenameOnFilestore();
-	$dir = substr($dir, 0, strlen($dir) - 4);
-	
-	$dh = opendir($dir);
-	$files = [];
-	while (($file = readdir($dh)) !== false) {
-		if (is_dir($dir . $file)) {
-			continue;
-		}
-		
-		if ($with_label) {
-			list($time) = explode('.', $file);
-			$files[$file] = date(elgg_echo('friendlytime:date_format'), $time);
-		} else {
-			$files[] = $file;
-		}
-	}
-	
-	closedir($dh);
-	
-	if ($with_label) {
-		krsort($files);
-	} else {
-		natcasesort($files);
-		$files = array_reverse($files);
-	}
-	
-	return $files;
-}
-
-/**
- * Cleanup the oldes logfiles of a sync config, based of the settings of the sync config
- *
- * @param ProfileSyncConfig $sync_config the sync config to cleanup the logs for
- *
- * @return bool
- */
-function profile_sync_cleanup_logs(ProfileSyncConfig $sync_config) {
-	
-	$log_cleanup_count = sanitise_int($sync_config->log_cleanup_count, false);
-	if (empty($log_cleanup_count)) {
-		return true;
-	}
-	
-	$log_files = profile_sync_get_ordered_log_files($sync_config, false);
-	if (empty($log_files) || (count($log_files) < $log_cleanup_count)) {
-		return true;
-	}
-	
-	$to_be_removed = array_slice($log_files, $log_cleanup_count);
-	if (empty($to_be_removed)) {
-		return true;
-	}
-	
-	$fh = new ElggFile();
-	$fh->owner_guid = $sync_config->getGUID();
-	
-	$result = true;
-	foreach ($to_be_removed as $filename) {
-		$fh->setFilename($filename);
-		if (!$fh->exists()) {
-			continue;
-		}
-		
-		$result = $result & $fh->delete();
-	}
-	
-	return $result;
 }
 
 /**
@@ -704,7 +567,7 @@ function profile_sync_find_user($profile_field, $field_value, ProfileSyncConfig 
 			$users = get_user_by_email($field_value);
 			if (count($users) > 1) {
 				$log_counters['duplicate email']++;
-				profile_sync_log($sync_config->getGUID(), "Duplicate email address: {$field_value}");
+				$sync_config->log("Duplicate email address: {$field_value}");
 			} elseif (count($users) === 1) {
 				$user = $users[0];
 			}
@@ -713,17 +576,15 @@ function profile_sync_find_user($profile_field, $field_value, ProfileSyncConfig 
 			$options = [
 				'type' => 'user',
 				'limit' => false,
-				'joins' => [
-					"JOIN {$dbprefix}users_entity ue ON e.guid = ue.guid",
-				],
-				'wheres' => [
-					'ue.name LIKE "' . sanitise_string($field_value) . '"',
+				'metadata_name_value_pairs' => [
+					'name' => $profile_field,
+					'value' => $field_value,
 				],
 			];
 			$users = elgg_get_entities($options);
 			if (count($users) > 1) {
 				$log_counters['duplicate name']++;
-				profile_sync_log($sync_config->getGUID(), "Duplicate name: {$field_value}");
+				$sync_config->log("Duplicate name: {$field_value}");
 			} elseif(count($users) == 1) {
 				$user = $users[0];
 			}
@@ -732,15 +593,15 @@ function profile_sync_find_user($profile_field, $field_value, ProfileSyncConfig 
 			$options = [
 				'type' => 'user',
 				'limit' => false,
-				'metadata_name_value_pairs' => [
-					'name' => $profile_field,
+				'annotation_name_value_pairs' => [
+					'name' => "profile:{$profile_field}",
 					'value' => $field_value,
 				],
 			];
-			$users = elgg_get_entities_from_metadata($options);
+			$users = elgg_get_entities($options);
 			if (count($users) > 1) {
 				$log_counters['duplicate profile field']++;
-				profile_sync_log($sync_config->getGUID(), "Duplicate profile field: {$profile_field} => {$field_value}");
+				$sync_config->log("Duplicate profile field: {$profile_field} => {$field_value}");
 			} elseif(count($users) === 1) {
 				$user = $users[0];
 			}
@@ -803,10 +664,10 @@ function profile_sync_get_profile_field_access($user_guid, $profile_field, $defa
 	static $field_access;
 	static $running_user_guid;
 	
-	$user_guid = sanitise_int($user_guid, false);
-	$default_access = sanitise_int($default_access);
+	$user_guid = (int) $user_guid;
+	$default_access = (int) $default_access;
 	
-	if (empty($user_guid)) {
+	if ($user_guid < 1) {
 		return $default_access;
 	}
 	
@@ -825,13 +686,14 @@ function profile_sync_get_profile_field_access($user_guid, $profile_field, $defa
 		
 		$options = [
 			'guid' => $user_guid,
-			'metadata_names' => $profile_names,
+			'annotation_names' => $profile_names,
 			'limit' => false,
 		];
-		$metadata = elgg_get_metadata($options);
-		if (!empty($metadata)) {
-			foreach ($metadata as $md) {
-				$field_access[$md->name] = (int) $md->access_id;
+		$annotations = elgg_get_annotations($options);
+		if (!empty($annotations)) {
+			/* $annotation \ElggAnnotation */
+			foreach ($annotations as $annotation) {
+				$field_access[$annotation->name] = (int) $annotation->access_id;
 			}
 		}
 	}
@@ -888,6 +750,14 @@ function profile_sync_prepare_datasource_form_vars(ProfileSyncDatasource $entity
 	return $result;
 }
 
+/**
+ * Prepare form vars for sync_config
+ *
+ * @param ProfileSyncDatasource $source the datasource for the sync config
+ * @param ProfileSyncConfig     $config the sync_config to edit
+ *
+ * @return array
+ */
 function profile_sync_prepare_sync_config_form_vars(ProfileSyncDatasource $source, ProfileSyncConfig $config = null) {
 	
 	$result = [
@@ -909,7 +779,7 @@ function profile_sync_prepare_sync_config_form_vars(ProfileSyncDatasource $sourc
 			
 			$value = $config->$name;
 			if (is_bool($default)) {
-				$value = (bool) $default;
+				$value = (bool) $value;
 			}
 			
 			$result[$name] = $value;

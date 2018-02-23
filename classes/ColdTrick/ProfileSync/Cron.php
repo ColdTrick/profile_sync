@@ -49,12 +49,13 @@ class Cron {
 			],
 		];
 		$batch = new \ElggBatch('elgg_get_entities_from_metadata', $options);
+		/* @var $sync_config \ProfileSyncConfig */
 		foreach ($batch as $sync_config) {
 			// start the sync
 			profile_sync_proccess_configuration($sync_config);
 			
 			// log cleanup
-			profile_sync_cleanup_logs($sync_config);
+			$sync_config->cleanupLogFiles();
 		}
 		
 		// reset memory limit

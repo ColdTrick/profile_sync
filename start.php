@@ -18,14 +18,13 @@ elgg_register_event_handler('init', 'system', 'profile_sync_init');
  */
 function profile_sync_init() {
 		
-	elgg_extend_view('css/admin', 'css/profile_sync/admin');
+	elgg_extend_view('css/admin', 'css/profile_sync/admin.css');
 	
 	// register ajax views
 	elgg_register_ajax_view('profile_sync/forms/datasource');
 	elgg_register_ajax_view('profile_sync/forms/sync_config');
 	elgg_register_ajax_view('profile_sync/sync_logs');
 	elgg_register_ajax_view('profile_sync/view_log');
-	elgg_register_ajax_view('profile_sync/sync_config/run');
 	
 	// register hooks
 	elgg_register_plugin_hook_handler('register', 'menu:entity', '\ColdTrick\ProfileSync\EntityMenu::addDataSourceMenus');

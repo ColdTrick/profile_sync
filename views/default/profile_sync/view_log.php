@@ -2,16 +2,14 @@
 
 elgg_admin_gatekeeper();
 
-$guid = (int) get_input('guid');
 $filename = get_input('file');
-
-$entity = get_entity($guid);
-if (empty($filename) || !elgg_instanceof($entity, 'object', 'profile_sync_config')) {
+$entity = elgg_extract('entity', $vars);
+if (empty($filename) || !$entity instanceof ProfileSyncConfig) {
 	return;
 }
 
 $fh = new ElggFile();
-$fh->owner_guid = $entity->getGUID();
+$fh->owner_guid = $entity->guid;
 $fh->setFilename($filename);
 
 if (!$fh->exists()) {
@@ -22,13 +20,22 @@ if (!$fh->exists()) {
 list($time) = explode('.', $filename);
 $datetime = date(elgg_echo('friendlytime:date_format'), $time);
 
-$content = elgg_view('output/longtext', ['value' => $fh->grabFile()]);
-
-$content .= elgg_view('output/url', [
-	'text' => elgg_echo('back'),
-	'href' => 'ajax/view/profile_sync/sync_logs/?guid=' . $entity->getGUID(),
-	'is_trusted' => true,
-	'class' => 'elgg-lightbox float-alt',
+$content = elgg_view('output/longtext', [
+	'value' => $fh->grabFile(),
 ]);
 
-echo elgg_view_module('inline', elgg_echo('profile_sync:view_log:title', [$entity->title, $datetime]), $content, ['class' => 'profile-sync-log-wrapper']);
+$back = elgg_view('output/url', [
+	'text' => elgg_echo('back'),
+	'icon' => 'arrow-left',
+	'href' => elgg_http_add_url_query_elements('ajax/view/profile_sync/sync_logs', [
+		'guid' => $entity->guid,
+	]),
+	'is_trusted' => true,
+	'class' => 'elgg-lightbox',
+]);
+
+$content .= elgg_format_element('div', [], $back);
+
+echo elgg_view_module('info', elgg_echo('profile_sync:view_log:title', [$entity->getDisplayName(), $datetime]), $content, [
+	'menu' => $back,
+]);
