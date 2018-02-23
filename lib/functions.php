@@ -166,7 +166,6 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 		}
 		
 		// find user
-		$datasource_used_id = $datasource_id;
 		$profile_used_id = $profile_id;
 		$datasource_unique_id = elgg_extract($datasource_id, $source_row);
 		
@@ -177,7 +176,6 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 // 			$sync_config->log("User not found: {$profile_id} => {$datasource_unique_id} trying fallback");
 			
 			$profile_used_id = $profile_id_fallback;
-			$datasource_used_id = $datasource_id_fallback;
 			$datasource_unique_id = elgg_extract($datasource_id_fallback, $source_row);
 			
 			$user = profile_sync_find_user($profile_id_fallback, $datasource_unique_id, $sync_config, $counters);
