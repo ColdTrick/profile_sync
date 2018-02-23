@@ -198,18 +198,25 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 					$sync_config->log("Created user: {$name}");
 					
 					$user = get_user($user_guid);
+					$user->language = elgg_get_config('language');
 					
 					if ($notify_user) {
-						$subject = elgg_echo('useradd:subject');
+						$subject = elgg_echo('useradd:subject', [], $user->language);
 						$body = elgg_echo('useradd:body', [
-							$user->name,
-							$site->name,
-							$site->url,
+							$user->getDisplayName(),
+							$site->getDisplayName(),
+							$site->getURL(),
 							$user->username,
 							$pwd,
-						]);
+						], $user->language);
 						
-						notify_user($user->getGUID(), $site->getGUID(), $subject, $body);
+						$notify_params = [
+							'action' => 'useradd',
+							'object' => $user,
+							'password' => $pwd,
+						];
+						
+						notify_user($user->guid, $site->guid, $subject, $body, $notify_params);
 					}
 				}
 			} catch (RegistrationException $r) {
@@ -232,8 +239,8 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 			// already banned?
 			if (!$user->isBanned()) {
 				$counters['user banned']++;
-				$user->ban("Profile Sync: {$sync_config->title}");
-				$sync_config->log("User banned: {$user->name} ({$user->username})");
+				$user->ban("Profile Sync: {$sync_config->getDisplayName()}");
+				$sync_config->log("User banned: {$user->getDisplayName()} ({$user->username})");
 			}
 			
 			continue;
@@ -245,7 +252,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 			if ($user->isBanned()) {
 				$counters['user unbanned']++;
 				$user->unban();
-				$sync_config->log("User unbanned: {$user->name} ({$user->username})");
+				$sync_config->log("User unbanned: {$user->getDisplayName()} ({$user->username})");
 			}
 			
 			continue;
@@ -292,20 +299,20 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 						// new username, check for availability
 						if (get_user_by_username($value)) {
 							// already taken
-							$sync_config->log("New username: {$value} for {$user->name} is already taken");
+							$sync_config->log("New username: {$value} for {$user->getDisplayName()} is already taken");
 							continue(2);
 						}
 					}
 				case 'name':
 					if (empty($value)) {
 						$counters['empty attributes']++;
-						$sync_config->log("Empty user attribute: {$datasource_col} for user {$user->name}");
+						$sync_config->log("Empty user attribute: {$datasource_col} for user {$user->getDisplayName()}");
 						continue(2);
 					}
 					
 					if (isset($user->$profile_field) && !$override) {
 						// don't override profile field
-// 						$sync_config->log("Profile field already set: {$profile_field} for user {$user->name}");
+// 						$sync_config->log("Profile field already set: {$profile_field} for user {$user->getDisplayName()}");
 						continue(2);
 					}
 					
@@ -323,7 +330,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 					// get a user icon based on a relative file path/url
 					// only works with file based datasources (eg. csv)
 					if (!($sync_source instanceof ProfileSyncCSV)) {
-						$sync_config->log("Can't fetch relative user icon path in non CSV datasouces: trying user {$user->name}");
+						$sync_config->log("Can't fetch relative user icon path in non CSV datasouces: trying user {$user->getDisplayName()}");
 						continue(2);
 					}
 					
@@ -339,27 +346,16 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 					
 					if (!empty($user->icontime) && !$override) {
 						// don't override icon
-// 						$sync_config->log("User already has an icon: {$user->name}");
+// 						$sync_config->log("User already has an icon: {$user->getDisplayName()}");
 						continue(2);
 					}
 					
-					// upload new icon
-					$icon_sizes = elgg_get_config('icon_sizes');
-					
-					$fh = new ElggFile();
-					$fh->owner_guid = $user->getGUID();
 						
 					if (empty($value) && $user->icontime) {
 						// no icon, so unset current icon
-						$sync_config->log("Removing icon for user: {$user->name}");
+						$sync_config->log("Removing icon for user: {$user->getDisplayName()}");
 						
-						foreach ($icon_sizes as $size => $icon_info) {
-							$fh->setFilename("profile/{$user->getGUID()}{$size}.jpg");
-							$fh->delete();
-						}
-						
-						unset($user->icontime);
-						unset($fh);
+						$user->deleteIcon();
 						
 						// on to the next field
 						continue(2);
@@ -368,7 +364,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 					// try to get the user icon
 					$icon_contents = file_get_contents($value);
 					if (empty($icon_contents)) {
-						$sync_config->log("Unable to fetch user icon: {$value} for user {$user->name}");
+						$sync_config->log("Unable to fetch user icon: {$value} for user {$user->getDisplayName()}");
 						continue(2);
 					}
 					
@@ -380,7 +376,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 						
 						if ($csv_icontime === $icontime) {
 							// base image has same modified time as user icontime, so skipp
-// 							$sync_config->log("No need to update user icon for user: {$user->name}");
+// 							$sync_config->log("No need to update user icon for user: {$user->getDisplayName()}");
 							continue(2);
 						}
 					}
@@ -389,43 +385,24 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 						$csv_icontime = time();
 					}
 					
-					// write icon to a temp location for further handling
-					$tmp_icon = tempnam(sys_get_temp_dir(), $user->getGUID());
-					file_put_contents($tmp_icon, $icon_contents);
+					try {
+						$user->saveIconFromLocalFile($value);
 					
-					// resize icon
-					$icon_updated = false;
-					foreach ($icon_sizes as $size => $icon_info) {
-						$icon_contents = get_resized_image_from_existing_file($tmp_icon, $icon_info['w'], $icon_info['h'], $icon_info['square'], 0, 0, 0, 0, $icon_info['upscale']);
-						
-						if (empty($icon_contents)) {
-							continue;
-						}
-						
-						$fh->setFilename("profile/{$user->getGUID()}{$size}.jpg");
-						$fh->open('write');
-						$fh->write($icon_contents);
-						$fh->close();
-						
-						$icon_updated = true;
+						$user_touched = true;
+					} catch (Exception $e) {
+// 						$sync_config->log("Error during profile icon update for user: {$user->getDisplayName()}");
 					}
 					
-					// did we have a successfull icon upload?
-					if ($icon_updated) {
-						$user->icontime = $csv_icontime;
-					}
-					
-					// cleanup
-					unlink($tmp_icon);
-					unset($fh);
-					
-					$user_touched = true;
 					break;
 				default:
 					// check overrides
-					if (isset($user->$profile_field) && !$override) {
+					$annotations = $user->getAnnotations([
+						'annotation_name' => "profile:{$profile_field}",
+						'limit' => false,
+					]);
+					if (!empty($annotations) && !$override) {
 						// don't override profile field
-// 						$sync_config->log("Profile field already set: {$profile_field} for user {$user->name}");
+// 						$sync_config->log("Profile field already set: {$profile_field} for user {$user->getDisplayName()}");
 						continue(2);
 					}
 					
@@ -436,25 +413,48 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 					
 					// remove existing value
 					if (empty($value)) {
-						if (isset($user->$profile_field)) {
-							unset($user->$profile_field);
+						if (!empty($annotations)) {
+							$user->deleteAnnotations("profile:{$profile_field}");
+							$user->deleteMetadata($profile_field);
 						}
 						continue(2);
 					}
 					
 					// check for the same value
-					if ($user->$profile_field === $value) {
+					$profile_values = [];
+					if (!empty($annotations)) {
+						foreach ($annotations as $a) {
+							$profile_values[] = $a->value;
+						}
+					}
+					$new_values = (array) $value;
+					if (array_diff($profile_values, $new_values) === array_diff($new_values, $profile_values)) {
 						// same value, no need to update
 						continue(2);
 					}
 					
-// 					$sync_config->log("Updating {$profile_field} with value {$value} old value {$user->$profile_field}");
+// 					$sync_config->log("Updating {$profile_field} with value '" . implode(',', $new_values) . "' old value '" . implode(',', $profile_values) . "'");
 					
 					// get the access of existing profile data
-					$access = profile_sync_get_profile_field_access($user->getGUID(), $profile_field, $access);
+					$access = profile_sync_get_profile_field_access($user->guid, $profile_field, $access);
 					
 					// save new value
-					$user->setMetadata($profile_field, $value, '', false, $user->getGUID(), $access);
+					// first remove old values
+					$user->deleteAnnotations("profile:{$profile_field}");
+					$user->deleteMetadata($profile_field);
+					
+					// store profile data in annotations
+					if (is_array($value)) {
+						foreach ($value as $v) {
+							$user->annotate("profile:{$profile_field}", $v, $access, $user->guid, 'text');
+						}
+					} else {
+						$user->annotate("profile:{$profile_field}", $value, $access, $user->guid, 'text');
+					}
+					
+					// and in metadata for BC
+					$user->$profile_field = $value;
+					
 					$user_touched = true;
 					break;
 			}
@@ -475,8 +475,8 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 		elgg_trigger_event('update_user', 'profile_sync', $update_event_params);
 		
 		// cache cleanup
-		_elgg_services()->entityCache->delete($user->getGUID());
-		$metadata_cache->clear($user->getGUID());
+		_elgg_services()->entityCache->delete($user->guid);
+		$metadata_cache->clear($user->guid);
 	}
 	
 	$sync_config->log(PHP_EOL . 'End processing: ' . date(elgg_echo('friendlytime:date_format')) . PHP_EOL);
@@ -681,6 +681,9 @@ function profile_sync_get_profile_field_access($user_guid, $profile_field, $defa
 		
 		$profile_fields = elgg_get_config('profile_fields');
 		$profile_names = array_keys($profile_fields);
+		array_walk($profile_names, function(&$profile_field_name) {
+			$profile_field_name = "profile:{$profile_field_name}";
+		});
 		
 		$options = [
 			'guid' => $user_guid,
@@ -691,7 +694,8 @@ function profile_sync_get_profile_field_access($user_guid, $profile_field, $defa
 		if (!empty($annotations)) {
 			/* $annotation \ElggAnnotation */
 			foreach ($annotations as $annotation) {
-				$field_access[$annotation->name] = (int) $annotation->access_id;
+				$profile_field_name = substr($annotation->name, strlen('profile:'));
+				$field_access[$profile_field_name] = (int) $annotation->access_id;
 			}
 		}
 	}
