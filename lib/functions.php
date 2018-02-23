@@ -381,10 +381,6 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 						}
 					}
 					
-					if ($csv_icontime === false) {
-						$csv_icontime = time();
-					}
-					
 					try {
 						$user->saveIconFromLocalFile($value);
 					
