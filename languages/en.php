@@ -26,7 +26,6 @@ return array(
 	'profile_sync:settings:memory_limit:unlimited' => "Unlimited",
 	
 	'profile_sync:sync_config:run' => "Run now",
-	'profile_sync:sync_config:processing' => "Processing....",
 	'profile_sync:sync_configs:schedule:manual' => "Manual",
 	
 	'profile_sync:admin:datasources' => "Datasources",
