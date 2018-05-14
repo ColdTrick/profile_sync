@@ -53,6 +53,8 @@ class ProfileSyncConfig extends ElggObject {
 			return;
 		}
 		
+		$date = date('Y-m-d H:i:s');
+		
 		if (!isset($this->fh)) {
 			$file = new ElggFile();
 			$file->owner_guid = $this->guid;
@@ -60,13 +62,13 @@ class ProfileSyncConfig extends ElggObject {
 			
 			// create the log file
 			$file->open('write');
-			$file->write('Start processing: ' . date(elgg_echo('friendlytime:date_format')) . PHP_EOL);
+			$file->write("[{$date}] Start processing" . PHP_EOL);
 			
 			// now keep open for appending
 			$this->fh = $file->open('append');
 		}
 		
-		fwrite($this->fh, $text . PHP_EOL);
+		fwrite($this->fh, "[{$date}] {$text}" . PHP_EOL);
 		elgg_log("Profile sync log({$this->guid}): {$text}", 'NOTICE');
 		
 		if ($close) {
