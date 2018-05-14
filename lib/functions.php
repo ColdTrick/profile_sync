@@ -478,7 +478,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 		$metadata_cache->clear($user->guid);
 	}
 	
-	$sync_config->log(PHP_EOL . 'End processing: ' . date(elgg_echo('friendlytime:date_format')) . PHP_EOL);
+	$sync_config->log('Done processing' . PHP_EOL);
 	foreach ($counters as $name => $count) {
 		$sync_config->log("{$name}: {$count}");
 	}
