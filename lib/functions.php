@@ -470,6 +470,9 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 		];
 		elgg_trigger_event('update_user', 'profile_sync', $update_event_params);
 		
+		// report done
+		$sync_config->log("User processed: {$user->getDisplayName()} ({$user->username})");
+		
 		// cache cleanup
 		_elgg_services()->entityCache->delete($user->guid);
 		$metadata_cache->clear($user->guid);
