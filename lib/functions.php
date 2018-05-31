@@ -14,10 +14,15 @@ use Elgg\Project\Paths;
  */
 function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 	
+// 	$timer = _elgg_services()->timer;
+// 	$timer->begin([__FUNCTION__, $sync_config->guid]);
+	
 	$datasource = $sync_config->getContainerEntity();
 	if (!$datasource instanceof ProfileSyncDatasource) {
 		return;
 	}
+	
+// 	$timer->begin([__FUNCTION__, $sync_config->guid, 'configuration validation']);
 	
 	$sync_match = json_decode($sync_config->sync_match, true);
 	$datasource_id = $sync_config->datasource_id;
@@ -33,22 +38,34 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 	
 	if ((!$ban_user && !$unban_user && empty($sync_match)) || ($datasource_id === '') || empty($profile_id)) {
 		$sync_config->log('Configuration error', true);
+		
+// 		$timer->end([__FUNCTION__, $sync_config->guid, 'configuration validation']);
+// 		$timer->end([__FUNCTION__, $sync_config->guid]);
 		return;
 	}
 	
 	if (!in_array($profile_id, ['name', 'username', 'email']) && !array_key_exists($profile_id, $profile_fields)) {
 		$sync_config->log("Invalid profile identifier: {$profile_id}", true);
+		
+// 		$timer->end([__FUNCTION__, $sync_config->guid, 'configuration validation']);
+// 		$timer->end([__FUNCTION__, $sync_config->guid]);
 		return;
 	}
 	
 	$sync_source = $datasource->getProfileSync();
 	if (!$sync_source instanceof ProfileSync) {
 		$sync_config->log("Invalid datasource type: {$datasource->datasource_type}", true);
+		
+// 		$timer->end([__FUNCTION__, $sync_config->guid, 'configuration validation']);
+// 		$timer->end([__FUNCTION__, $sync_config->guid]);
 		return;
 	}
 	
 	if (!$sync_source->connect()) {
 		$sync_config->log('Unable to connect to the datasource', true);
+		
+// 		$timer->end([__FUNCTION__, $sync_config->guid, 'configuration validation']);
+// 		$timer->end([__FUNCTION__, $sync_config->guid]);
 		return;
 	}
 	
@@ -100,20 +117,32 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 	
 	if ($ban_user && $create_user) {
 		$sync_config->log('Both create and ban users is allowed, don\'t know what to do', true);
+		
+// 		$timer->end([__FUNCTION__, $sync_config->guid, 'configuration validation']);
+// 		$timer->end([__FUNCTION__, $sync_config->guid]);
 		return;
 	}
 	
 	if ($unban_user && $create_user) {
 		$sync_config->log('Both create and unban users is allowed, don\'t know what to do', true);
+		
+// 		$timer->end([__FUNCTION__, $sync_config->guid, 'configuration validation']);
+// 		$timer->end([__FUNCTION__, $sync_config->guid]);
 		return;
 	}
 	
 	if ($ban_user && $unban_user) {
 		$sync_config->log('Both ban and unban users is allowed, don\'t know what to do', true);
+		
+// 		$timer->end([__FUNCTION__, $sync_config->guid, 'configuration validation']);
+// 		$timer->end([__FUNCTION__, $sync_config->guid]);
 		return;
 	}
 	
+// 	$timer->end([__FUNCTION__, $sync_config->guid, 'configuration validation']);
+	
 	// start the sync process
+// 	$timer->begin([__FUNCTION__, $sync_config->guid, 'sync']);
 	set_time_limit(0);
 	_elgg_services()->db->disableQueryCache();
 	
@@ -151,6 +180,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 	
 	while (($source_row = $sync_source->fetchRow()) !== false) {
 		$counters['source rows']++;
+// 		$timer->begin([__FUNCTION__, $sync_config->guid, 'sync', 'row', $counters['source rows']]);
 		
 		// let other plugins change the row data
 		$params = [
@@ -162,6 +192,8 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 		
 		if (!is_array($source_row) || empty($source_row[$datasource_id])) {
 			$counters["empty source id"]++;
+			
+// 			$timer->end([__FUNCTION__, $sync_config->guid, 'sync', 'row', $counters['source rows']]);
 			continue;
 		}
 		
@@ -229,6 +261,8 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 		if (empty($user)) {
 			$counters['user not found']++;
 			$sync_config->log("User not found: {$profile_used_id} => {$datasource_unique_id}");
+			
+// 			$timer->end([__FUNCTION__, $sync_config->guid, 'sync', 'row', $counters['source rows']]);
 			continue;
 		} else {
 			$counters['processed users']++;
@@ -246,6 +280,8 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 			// clear cache
 			$user->invalidateCache();
 			
+// 			$timer->end([__FUNCTION__, $sync_config->guid, 'sync', 'row', $counters['source rows']]);
+			
 			continue;
 		}
 		
@@ -260,6 +296,8 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 			
 			// clear cache
 			$user->invalidateCache();
+			
+// 			$timer->end([__FUNCTION__, $sync_config->guid, 'sync', 'row', $counters['source rows']]);
 			
 			continue;
 		}
@@ -481,12 +519,20 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 		
 		// cache cleanup
 		$user->invalidateCache();
+		
+// 		$timer->end([__FUNCTION__, $sync_config->guid, 'sync', 'row', $counters['source rows']]);
 	}
 	
+// 	$timer->end([__FUNCTION__, $sync_config->guid, 'sync']);
+	
 	$sync_config->log('Done processing' . PHP_EOL);
+	
+	// log stats
+	$log = 'Stats:' . PHP_EOL;
 	foreach ($counters as $name => $count) {
-		$sync_config->log("{$name}: {$count}");
+		$log .= "{$name}: {$count}" . PHP_EOL;
 	}
+	$sync_config->log($log);
 	
 	// close logfile
 	$sync_config->closeLog();
@@ -501,7 +547,11 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 	// restore access
 	elgg_set_ignore_access($ia);
 	
+	// clear metadata cache
 	$metadata_cache->clearAll();
+	
+	// stop timer
+// 	$timer->end([__FUNCTION__, $sync_config->guid]);
 }
 
 /**
