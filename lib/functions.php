@@ -243,6 +243,9 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 				$sync_config->log("User banned: {$user->getDisplayName()} ({$user->username})");
 			}
 			
+			// clear cache
+			$user->invalidateCache();
+			
 			continue;
 		}
 		
@@ -254,6 +257,9 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 				$user->unban();
 				$sync_config->log("User unbanned: {$user->getDisplayName()} ({$user->username})");
 			}
+			
+			// clear cache
+			$user->invalidateCache();
 			
 			continue;
 		}
@@ -474,8 +480,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 		$sync_config->log("User processed: {$user->getDisplayName()} ({$user->username})");
 		
 		// cache cleanup
-		_elgg_services()->entityCache->delete($user->guid);
-		$metadata_cache->clear($user->guid);
+		$user->invalidateCache();
 	}
 	
 	$sync_config->log('Done processing' . PHP_EOL);
