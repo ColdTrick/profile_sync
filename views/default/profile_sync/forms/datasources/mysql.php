@@ -57,6 +57,7 @@ $fields[] = [
 	'#label' => elgg_echo('profile_sync:admin:datasources:edit:mysql:dbpassword'),
 	'name' => 'params[dbpassword]',
 	'value' => elgg_extract('dbpassword', $vars),
+	'always_empty' => false,
 	'class' => 'elgg-input-text',
 ];
 
