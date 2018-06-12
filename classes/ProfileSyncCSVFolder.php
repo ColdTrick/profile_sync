@@ -8,7 +8,8 @@
 class ProfileSyncCSVFolder extends ProfileSyncCSV {
 	
 	protected $dir_iterator;
-	
+	protected $processed_files = [];
+
 	protected function initialize() {
 		$ia = elgg_set_ignore_access(true);
 		$this->datasource->csv_location = $this->datasource->csv_folder_location;
@@ -55,25 +56,36 @@ class ProfileSyncCSVFolder extends ProfileSyncCSV {
 	/**
 	 * Returns next file in the folder
 	 *
-	 * @return SplFileObject|false
+	 * @return resource|false
 	 */
 	public function getNextFile() {
 		if (!$this->dir_iterator) {
 			return false;
 		}
+		
 		$this->dir_iterator->next();
+		if (!$this->dir_iterator->valid()) {
+			return false;
+		}
+		
 		$file = $this->dir_iterator->current();
 		if (!$file) {
 			return false;
 		}
 				
-		while($file->getExtension() !== 'csv') {
+		while($this->dir_iterator->valid()) {
+			if ($file->getExtension() === 'csv') {
+				break;
+			}
 			$this->dir_iterator->next();
 			$file = $this->dir_iterator->current();
 		}
-		if (!$file) {
+		
+		if (!$file->isFile()) {
 			return false;
 		}
+		
+		$this->processed_files[] = $file->getPathname();
 		
 		return fopen($file->getPathname(), "r");
 	}
@@ -113,8 +125,7 @@ class ProfileSyncCSVFolder extends ProfileSyncCSV {
 		if ($fields === false) {
 			// no more fields, check next file
 			$next_file = $this->getNextFile();
-			
-			if (empty($next_file)) {
+			if (!is_resource($next_file)) {
 				// no more files
 				return false;
 			}
@@ -164,6 +175,8 @@ class ProfileSyncCSVFolder extends ProfileSyncCSV {
 		unset($this->named_columns);
 		
 		// remove all files
-		
+		foreach ($this->processed_files as $filename) {
+			unlink($filename);
+		}
 	}
 }
