@@ -1,10 +1,14 @@
 <?php
 /**
- * This file was created by Translation Editor v4.0
- * On 2015-08-06 15:22
+ * This file was created by Translation Editor v7.0-beta
+ * On 2018-12-14 16:44
  */
 
 return array (
+  'profile_sync:admin:datasources:edit' => 'Bewerk databron: %s',
+  'profile_sync:admin:sync_configs:edit' => 'Bewerk synchronisatie configuratie: %s',
+  'profile_sync:admin:datasources:edit:mysql' => 'MySQL instellingen',
+  'profile_sync:admin:datasources:edit:csv' => 'CSV instellingen',
   'profile_sync:sync_config:sync_status:unban' => 'Gebruikers deblokkeren',
   'profile_sync:interval:friendly' => 'Laatste keer uitgevoerd',
   'profile_sync:interval:date' => 'Datum',
