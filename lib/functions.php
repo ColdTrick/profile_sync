@@ -43,7 +43,7 @@ function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 		return;
 	}
 	
-	$sync_source = $datasource->getProfileSync();
+	$sync_source = $datasource->getProfileSync($lastrun);
 	if (!$sync_source instanceof ProfileSync) {
 		$sync_config->log("Invalid datasource type: {$datasource->datasource_type}", true);
 		

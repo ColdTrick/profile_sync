@@ -33,15 +33,17 @@ class ProfileSyncDatasource extends ElggObject {
 	/**
 	 * Get the ProfileSync for this datasource
 	 *
+	 * @param int $lastrun last run timestamp
+	 *
 	 * @return ProfileSync|false
 	 */
-	public function getProfileSync() {
+	public function getProfileSync($lastrun) {
 		
 		switch ($this->datasource_type) {
 			case 'csv':
-				return new ProfileSyncCSV($this);
+				return new ProfileSyncCSV($this, $lastrun);
 			case 'mysql':
-				return new ProfileSyncMySQL($this);
+				return new ProfileSyncMySQL($this, $lastrun);
 		}
 		
 		return false;
