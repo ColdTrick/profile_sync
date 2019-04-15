@@ -27,9 +27,10 @@ if ($entity->create_user) {
 }
 
 // schedule
-$schedule_text = elgg_echo("profile_sync:interval:{$entity->schedule}");
 if ($entity->schedule === 'manual') {
 	$schedule_text = elgg_echo('profile_sync:sync_configs:schedule:manual');
+} else {
+	$schedule_text = elgg_echo("profile_sync:interval:{$entity->schedule}");
 }
 $subtitle[] = elgg_format_element('span', ['class' => 'mrs'], elgg_echo('profile_sync:admin:sync_configs:edit:schedule') . ': ' . $schedule_text);
 
