@@ -1,6 +1,13 @@
 Version history
 ===============
 
+4.0 (2019-04-17):
+
+- changed: increased minimal Elgg version to 3.0
+- fixed: correctly set profile data
+- fixed: make sure password is remembered between edits
+- fixed: respect last run in fetching data from datasource
+
 3.0.2 (2017-09-06):
 
 - several small chores/fixes
