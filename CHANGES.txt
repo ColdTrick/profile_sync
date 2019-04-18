@@ -1,6 +1,10 @@
 Version history
 ===============
 
+4.0.1 (2019-04-18):
+
+- several small chores/fixes
+
 4.0 (2019-04-17):
 
 - changed: increased minimal Elgg version to 3.0
