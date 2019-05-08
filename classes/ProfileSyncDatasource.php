@@ -37,7 +37,7 @@ class ProfileSyncDatasource extends ElggObject {
 	 *
 	 * @return ProfileSync|false
 	 */
-	public function getProfileSync($lastrun) {
+	public function getProfileSync($lastrun = 0) {
 		
 		switch ($this->datasource_type) {
 			case 'csv':
