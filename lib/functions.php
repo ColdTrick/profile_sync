@@ -14,506 +14,506 @@ use Elgg\Project\Paths;
  */
 function profile_sync_proccess_configuration(ProfileSyncConfig $sync_config) {
 	
-	$datasource = $sync_config->getContainerEntity();
-	if (!$datasource instanceof ProfileSyncDatasource) {
-		return;
-	}
-	
-	$sync_match = json_decode($sync_config->sync_match, true);
-	$datasource_id = $sync_config->datasource_id;
-	$profile_id = $sync_config->profile_id;
-	$lastrun = (int) $sync_config->lastrun;
-	
-	$ban_user = (bool) $sync_config->ban_user;
-	$unban_user = (bool) $sync_config->unban_user;
-	
-	$sync_config->log("Last run timestamp: {$lastrun} (" . date(elgg_echo('friendlytime:date_format'), $lastrun) . ")" . PHP_EOL);
-	
-	$profile_fields = elgg_get_config('profile_fields');
-	
-	if ((!$ban_user && !$unban_user && empty($sync_match)) || ($datasource_id === '') || empty($profile_id)) {
-		$sync_config->log('Configuration error', true);
-		
-		return;
-	}
-	
-	if (!in_array($profile_id, ['name', 'username', 'email']) && !array_key_exists($profile_id, $profile_fields)) {
-		$sync_config->log("Invalid profile identifier: {$profile_id}", true);
-		
-		return;
-	}
-	
-	$sync_source = $datasource->getProfileSync($lastrun);
-	if (!$sync_source instanceof ProfileSync) {
-		$sync_config->log("Invalid datasource type: {$datasource->datasource_type}", true);
-		
-		return;
-	}
-	
-	if (!$sync_source->connect()) {
-		$sync_config->log('Unable to connect to the datasource', true);
-		
-		return;
-	}
-	
-	$datasource_id_fallback = $sync_config->datasource_id_fallback;
-	$profile_id_fallback = $sync_config->profile_id_fallback;
-	
-	$create_user = (bool) $sync_config->create_user;
-	$notify_user = (bool) $sync_config->notify_user;
-	
-	$create_user_name = false;
-	$create_user_email = false;
-	$create_user_username = false;
-	
-	if ($create_user) {
-		$sync_config->log('User creation is allowed');
-		
-		foreach ($sync_match as $datasource_col => $datasource_config) {
-			list($datasource_col) = explode(PROFILE_SYNC_DATASOURCE_COL_SEPERATOR, $datasource_col);
-			
-			switch ($datasource_config['profile_field']) {
-				case 'name':
-					$create_user_name = $datasource_col;
-					break;
-				case 'email':
-					$create_user_email = $datasource_col;
-					break;
-				case 'username':
-					$create_user_username = $datasource_col;
-					break;
-			}
+	elgg_call(ELGG_IGNORE_ACCESS, function() use ($sync_config) {
+		$datasource = $sync_config->getContainerEntity();
+		if (!$datasource instanceof ProfileSyncDatasource) {
+			return;
 		}
 		
-		if (($create_user_name === false) || ($create_user_username === false) || ($create_user_email === false)) {
-			$sync_config->log('Missing information to create users');
-			$sync_config->log("- name: {$create_user_name}");
-			$sync_config->log("- email: {$create_user_email}");
-			$sync_config->log("- username: {$create_user_username}");
-			$create_user = false;
-		}
-	}
-	
-	if ($ban_user) {
-		$sync_config->log('Matching users will be banned');
-	}
-	
-	if ($unban_user) {
-		$sync_config->log('Matching users will be unbanned');
-	}
-	
-	if ($ban_user && $create_user) {
-		$sync_config->log('Both create and ban users is allowed, don\'t know what to do', true);
+		$sync_match = json_decode($sync_config->sync_match, true);
+		$datasource_id = $sync_config->datasource_id;
+		$profile_id = $sync_config->profile_id;
+		$lastrun = (int) $sync_config->lastrun;
 		
-		return;
-	}
-	
-	if ($unban_user && $create_user) {
-		$sync_config->log('Both create and unban users is allowed, don\'t know what to do', true);
+		$ban_user = (bool) $sync_config->ban_user;
+		$unban_user = (bool) $sync_config->unban_user;
 		
-		return;
-	}
-	
-	if ($ban_user && $unban_user) {
-		$sync_config->log('Both ban and unban users is allowed, don\'t know what to do', true);
+		$sync_config->log("Last run timestamp: {$lastrun} (" . date(elgg_echo('friendlytime:date_format'), $lastrun) . ")" . PHP_EOL);
 		
-		return;
-	}
-	
-	// start the sync process
-	set_time_limit(0);
-	_elgg_services()->db->disableQueryCache();
-	
-	$default_access = get_default_access();
-	$ia = elgg_set_ignore_access(true);
-	$site = elgg_get_site_entity();
-	
-	// we want to cache entity metadata on first __get()
-	$metadata_cache = _elgg_services()->metadataCache;
-	
-	$counters = [
-		'source rows' => 0,
-		'empty source id' => 0,
-		'duplicate email' => 0,
-		'duplicate name' => 0,
-		'duplicate profile field' => 0,
-		'user not found' => 0,
-		'user created' => 0,
-		'user banned' => 0,
-		'user unbanned' => 0,
-		'empty attributes' => 0,
-		'invalid profile field' => 0,
-		'invalid source field' => 0,
-		'processed users' => 0,
-	];
-	
-	$base_location = '';
-	if ($sync_source instanceof ProfileSyncCSV) {
-		// get base path
-		$csv_location = $datasource->csv_location;
-		$csv_filename = basename($csv_location);
+		$profile_fields = elgg_get_config('profile_fields');
 		
-		$base_location = rtrim(str_ireplace($csv_filename, '', $csv_location), DIRECTORY_SEPARATOR);
-	}
-	
-	while (($source_row = $sync_source->fetchRow()) !== false) {
-		$counters['source rows']++;
-		
-		// let other plugins change the row data
-		$params = [
-			'datasource' => $datasource,
-			'sync_config' => $sync_config,
-			'source_row' => $source_row,
-		];
-		$source_row = elgg_trigger_plugin_hook('source_row', 'profile_sync', $params, $source_row);
-		
-		if (!is_array($source_row) || empty($source_row[$datasource_id])) {
-			$counters["empty source id"]++;
+		if ((!$ban_user && !$unban_user && empty($sync_match)) || ($datasource_id === '') || empty($profile_id)) {
+			$sync_config->log('Configuration error', true);
 			
-			continue;
+			return;
 		}
 		
-		// find user
-		$profile_used_id = $profile_id;
-		$datasource_unique_id = elgg_extract($datasource_id, $source_row);
-		
-		$user = profile_sync_find_user($profile_id, $datasource_unique_id, $sync_config, $counters);
-		
-		// fallback user
-		if (empty($user) && ($datasource_id_fallback !== '') && !empty($source_row[$datasource_id_fallback]) && !empty($profile_id_fallback)) {
-			$profile_used_id = $profile_id_fallback;
-			$datasource_unique_id = elgg_extract($datasource_id_fallback, $source_row);
+		if (!in_array($profile_id, ['name', 'username', 'email']) && !array_key_exists($profile_id, $profile_fields)) {
+			$sync_config->log("Invalid profile identifier: {$profile_id}", true);
 			
-			$user = profile_sync_find_user($profile_id_fallback, $datasource_unique_id, $sync_config, $counters);
+			return;
 		}
 		
-		// check if we need to create a user
-		if (empty($user) && $create_user) {
+		$sync_source = $datasource->getProfileSync($lastrun);
+		if (!$sync_source instanceof ProfileSync) {
+			$sync_config->log("Invalid datasource type: {$datasource->datasource_type}", true);
 			
-			$pwd = generate_random_cleartext_password();
+			return;
+		}
+		
+		if (!$sync_source->connect()) {
+			$sync_config->log('Unable to connect to the datasource', true);
 			
-			try {
-				// convert to utf-8
-				$username = profile_sync_filter_var($source_row[$create_user_username]);
-				$name = profile_sync_filter_var($source_row[$create_user_name]);
-				$email = profile_sync_filter_var($source_row[$create_user_email]);
+			return;
+		}
+		
+		$datasource_id_fallback = $sync_config->datasource_id_fallback;
+		$profile_id_fallback = $sync_config->profile_id_fallback;
+		
+		$create_user = (bool) $sync_config->create_user;
+		$notify_user = (bool) $sync_config->notify_user;
+		
+		$create_user_name = false;
+		$create_user_email = false;
+		$create_user_username = false;
+		
+		if ($create_user) {
+			$sync_config->log('User creation is allowed');
+			
+			foreach ($sync_match as $datasource_col => $datasource_config) {
+				list($datasource_col) = explode(PROFILE_SYNC_DATASOURCE_COL_SEPERATOR, $datasource_col);
 				
-				$user_guid = register_user($username, $pwd, $name, $email);
-				if (!empty($user_guid)) {
-					$counters['user created']++;
-					$sync_config->log("Created user: {$name}");
-					
-					$user = get_user($user_guid);
-					$user->language = elgg_get_config('language');
-					
-					if ($notify_user) {
-						$subject = elgg_echo('useradd:subject', [], $user->language);
-						$body = elgg_echo('useradd:body', [
-							$user->getDisplayName(),
-							$site->getDisplayName(),
-							$site->getURL(),
-							$user->username,
-							$pwd,
-						], $user->language);
-						
-						$notify_params = [
-							'action' => 'useradd',
-							'object' => $user,
-							'password' => $pwd,
-						];
-						
-						notify_user($user->guid, $site->guid, $subject, $body, $notify_params);
-					}
+				switch ($datasource_config['profile_field']) {
+					case 'name':
+						$create_user_name = $datasource_col;
+						break;
+					case 'email':
+						$create_user_email = $datasource_col;
+						break;
+					case 'username':
+						$create_user_username = $datasource_col;
+						break;
 				}
-			} catch (RegistrationException $r) {
-				$name = profile_sync_filter_var($source_row[$create_user_name]);
-				$sync_config->log("Failure creating user: {$name} - {$r->getMessage()}");
+			}
+			
+			if (($create_user_name === false) || ($create_user_username === false) || ($create_user_email === false)) {
+				$sync_config->log('Missing information to create users');
+				$sync_config->log("- name: {$create_user_name}");
+				$sync_config->log("- email: {$create_user_email}");
+				$sync_config->log("- username: {$create_user_username}");
+				$create_user = false;
 			}
 		}
 		
-		// did we get a user
-		if (empty($user)) {
-			$counters['user not found']++;
-			$sync_config->log("User not found: {$profile_used_id} => {$datasource_unique_id}");
-			
-			continue;
-		} else {
-			$counters['processed users']++;
-		}
-		
-		// ban the user
 		if ($ban_user) {
-			// already banned?
-			if (!$user->isBanned()) {
-				$counters['user banned']++;
-				$user->ban("Profile Sync: {$sync_config->getDisplayName()}");
-				$sync_config->log("User banned: {$user->getDisplayName()} ({$user->username})");
-			}
-			
-			// clear cache
-			$user->invalidateCache();
-			
-			continue;
+			$sync_config->log('Matching users will be banned');
 		}
 		
-		// unban the user
 		if ($unban_user) {
-			// already banned?
-			if ($user->isBanned()) {
-				$counters['user unbanned']++;
-				$user->unban();
-				$sync_config->log("User unbanned: {$user->getDisplayName()} ({$user->username})");
-			}
-			
-			// clear cache
-			$user->invalidateCache();
-			
-			continue;
+			$sync_config->log('Matching users will be unbanned');
 		}
 		
-		// start of profile sync
-		$special_sync_fields = [
-			'name',
-			'username',
-			'email',
-			'user_icon_relative_path',
-			'user_icon_full_path',
+		if ($ban_user && $create_user) {
+			$sync_config->log('Both create and ban users is allowed, don\'t know what to do', true);
+			
+			return;
+		}
+		
+		if ($unban_user && $create_user) {
+			$sync_config->log('Both create and unban users is allowed, don\'t know what to do', true);
+			
+			return;
+		}
+		
+		if ($ban_user && $unban_user) {
+			$sync_config->log('Both ban and unban users is allowed, don\'t know what to do', true);
+			
+			return;
+		}
+		
+		// start the sync process
+		set_time_limit(0);
+		_elgg_services()->db->disableQueryCache();
+		
+		$default_access = get_default_access();
+		$site = elgg_get_site_entity();
+		
+		// we want to cache entity metadata on first __get()
+		$metadata_cache = _elgg_services()->metadataCache;
+		
+		$counters = [
+			'source rows' => 0,
+			'empty source id' => 0,
+			'duplicate email' => 0,
+			'duplicate name' => 0,
+			'duplicate profile field' => 0,
+			'user not found' => 0,
+			'user created' => 0,
+			'user banned' => 0,
+			'user unbanned' => 0,
+			'empty attributes' => 0,
+			'invalid profile field' => 0,
+			'invalid source field' => 0,
+			'processed users' => 0,
 		];
 		
-		// keep track if userdata is changed
-		$user_touched = false;
+		$base_location = '';
+		if ($sync_source instanceof ProfileSyncCSV) {
+			// get base path
+			$csv_location = $datasource->csv_location;
+			$csv_filename = basename($csv_location);
+			
+			$base_location = rtrim(str_ireplace($csv_filename, '', $csv_location), DIRECTORY_SEPARATOR);
+		}
 		
-		foreach ($sync_match as $datasource_col => $profile_config) {
-			list($datasource_col) = explode(PROFILE_SYNC_DATASOURCE_COL_SEPERATOR, $datasource_col);
+		
+		while (($source_row = $sync_source->fetchRow()) !== false) {
+			$counters['source rows']++;
 			
-			$profile_field = elgg_extract('profile_field', $profile_config);
-			$access = (int) elgg_extract('access', $profile_config, $default_access);
-			$override = (bool) elgg_extract('always_override', $profile_config, true);
+			// let other plugins change the row data
+			$params = [
+				'datasource' => $datasource,
+				'sync_config' => $sync_config,
+				'source_row' => $source_row,
+			];
+			$source_row = elgg_trigger_plugin_hook('source_row', 'profile_sync', $params, $source_row);
 			
-			if (!in_array($profile_field, $special_sync_fields) && !array_key_exists($profile_field, $profile_fields)) {
-				$counters['invalid profile field']++;
+			if (!is_array($source_row) || empty($source_row[$datasource_id])) {
+				$counters["empty source id"]++;
+				
 				continue;
 			}
-			if (!isset($source_row[$datasource_col])) {
-				$counters['invalid source field']++;
+			
+			// find user
+			$profile_used_id = $profile_id;
+			$datasource_unique_id = elgg_extract($datasource_id, $source_row);
+			
+			$user = profile_sync_find_user($profile_id, $datasource_unique_id, $sync_config, $counters);
+			
+			// fallback user
+			if (empty($user) && ($datasource_id_fallback !== '') && !empty($source_row[$datasource_id_fallback]) && !empty($profile_id_fallback)) {
+				$profile_used_id = $profile_id_fallback;
+				$datasource_unique_id = elgg_extract($datasource_id_fallback, $source_row);
+				
+				$user = profile_sync_find_user($profile_id_fallback, $datasource_unique_id, $sync_config, $counters);
+			}
+			
+			// check if we need to create a user
+			if (empty($user) && $create_user) {
+				
+				$pwd = generate_random_cleartext_password();
+				
+				try {
+					// convert to utf-8
+					$username = profile_sync_filter_var($source_row[$create_user_username]);
+					$name = profile_sync_filter_var($source_row[$create_user_name]);
+					$email = profile_sync_filter_var($source_row[$create_user_email]);
+					
+					$user_guid = register_user($username, $pwd, $name, $email);
+					if (!empty($user_guid)) {
+						$counters['user created']++;
+						$sync_config->log("Created user: {$name}");
+						
+						$user = get_user($user_guid);
+						$user->language = elgg_get_config('language');
+						
+						if ($notify_user) {
+							$subject = elgg_echo('useradd:subject', [], $user->language);
+							$body = elgg_echo('useradd:body', [
+								$user->getDisplayName(),
+								$site->getDisplayName(),
+								$site->getURL(),
+								$user->username,
+								$pwd,
+							], $user->language);
+							
+							$notify_params = [
+								'action' => 'useradd',
+								'object' => $user,
+								'password' => $pwd,
+							];
+							
+							notify_user($user->guid, $site->guid, $subject, $body, $notify_params);
+						}
+					}
+				} catch (RegistrationException $r) {
+					$name = profile_sync_filter_var($source_row[$create_user_name]);
+					$sync_config->log("Failure creating user: {$name} - {$r->getMessage()}");
+				}
+			}
+			
+			// did we get a user
+			if (empty($user)) {
+				$counters['user not found']++;
+				$sync_config->log("User not found: {$profile_used_id} => {$datasource_unique_id}");
+				
+				continue;
+			} else {
+				$counters['processed users']++;
+			}
+			
+			// ban the user
+			if ($ban_user) {
+				// already banned?
+				if (!$user->isBanned()) {
+					$counters['user banned']++;
+					$user->ban("Profile Sync: {$sync_config->getDisplayName()}");
+					$sync_config->log("User banned: {$user->getDisplayName()} ({$user->username})");
+				}
+				
+				// clear cache
+				$user->invalidateCache();
+				
 				continue;
 			}
 			
-			$value = elgg_extract($datasource_col, $source_row);
-			$value = profile_sync_filter_var($value);
+			// unban the user
+			if ($unban_user) {
+				// already banned?
+				if ($user->isBanned()) {
+					$counters['user unbanned']++;
+					$user->unban();
+					$sync_config->log("User unbanned: {$user->getDisplayName()} ({$user->username})");
+				}
+				
+				// clear cache
+				$user->invalidateCache();
+				
+				continue;
+			}
 			
-			switch ($profile_field) {
-				case 'email':
-					if (!is_email_address($value)) {
-						continue(2);
-					}
-				case 'username':
-					if ($override && ($user->username !== $value)) {
-						// new username, check for availability
-						if (get_user_by_username($value)) {
-							// already taken
-							$sync_config->log("New username: {$value} for {$user->getDisplayName()} is already taken");
+			// start of profile sync
+			$special_sync_fields = [
+				'name',
+				'username',
+				'email',
+				'user_icon_relative_path',
+				'user_icon_full_path',
+			];
+			
+			// keep track if userdata is changed
+			$user_touched = false;
+			
+			foreach ($sync_match as $datasource_col => $profile_config) {
+				list($datasource_col) = explode(PROFILE_SYNC_DATASOURCE_COL_SEPERATOR, $datasource_col);
+				
+				$profile_field = elgg_extract('profile_field', $profile_config);
+				$access = (int) elgg_extract('access', $profile_config, $default_access);
+				$override = (bool) elgg_extract('always_override', $profile_config, true);
+				
+				if (!in_array($profile_field, $special_sync_fields) && !array_key_exists($profile_field, $profile_fields)) {
+					$counters['invalid profile field']++;
+					continue;
+				}
+				if (!isset($source_row[$datasource_col])) {
+					$counters['invalid source field']++;
+					continue;
+				}
+				
+				$value = elgg_extract($datasource_col, $source_row);
+				$value = profile_sync_filter_var($value);
+				
+				switch ($profile_field) {
+					case 'email':
+						if (!is_email_address($value)) {
 							continue(2);
 						}
-					}
-				case 'name':
-					if (empty($value)) {
-						$counters['empty attributes']++;
-						$sync_config->log("Empty user attribute: {$datasource_col} for user {$user->getDisplayName()}");
-						continue(2);
-					}
-					
-					if (isset($user->$profile_field) && !$override) {
-						// don't override profile field
-// 						$sync_config->log("Profile field already set: {$profile_field} for user {$user->getDisplayName()}");
-						continue(2);
-					}
-					
-					// check for the same value
-					if ($user->$profile_field === $value) {
-						// same value, no need to update
-						continue(2);
-					}
-					
-					// save user attribute
-					$user->$profile_field = $value;
-					$user_touched = true;
-					break;
-				case 'user_icon_relative_path':
-					// get a user icon based on a relative file path/url
-					// only works with file based datasources (eg. csv)
-					if (!($sync_source instanceof ProfileSyncCSV)) {
-						$sync_config->log("Can't fetch relative user icon path in non CSV datasouces: trying user {$user->getDisplayName()}");
-						continue(2);
-					}
-					
-					// make new icon path
-					if (!empty($value)) {
-						$value = Paths::sanitize($value, false); // prevent abuse (like ../../......)
-						$value = ltrim($value, DIRECTORY_SEPARATOR); // remove beginning /
-						$value = $base_location . DIRECTORY_SEPARATOR . $value; // concat base location and rel path
-					}
-					
-				case 'user_icon_full_path':
-					// get a user icon based on a full file path/url
-					
-					if (!empty($user->icontime) && !$override) {
-						// don't override icon
-// 						$sync_config->log("User already has an icon: {$user->getDisplayName()}");
-						continue(2);
-					}
-					
-						
-					if (empty($value) && $user->icontime) {
-						// no icon, so unset current icon
-						$sync_config->log("Removing icon for user: {$user->getDisplayName()}");
-						
-						$user->deleteIcon();
-						
-						// on to the next field
-						continue(2);
-					}
-					
-					// try to get the user icon
-					$icon_contents = file_get_contents($value);
-					if (empty($icon_contents)) {
-						$sync_config->log("Unable to fetch user icon: {$value} for user {$user->getDisplayName()}");
-						continue(2);
-					}
-					
-					// was csv image updated
-					$csv_icontime = @filemtime($value);
-					if (($csv_icontime !== false) && isset($user->icontime)) {
-						$csv_icontime = (int) $csv_icontime;
-						$icontime = (int) $user->icontime;
-						
-						if ($csv_icontime === $icontime) {
-							// base image has same modified time as user icontime, so skipp
-// 							$sync_config->log("No need to update user icon for user: {$user->getDisplayName()}");
+					case 'username':
+						if ($override && ($user->username !== $value)) {
+							// new username, check for availability
+							if (get_user_by_username($value)) {
+								// already taken
+								$sync_config->log("New username: {$value} for {$user->getDisplayName()} is already taken");
+								continue(2);
+							}
+						}
+					case 'name':
+						if (empty($value)) {
+							$counters['empty attributes']++;
+							$sync_config->log("Empty user attribute: {$datasource_col} for user {$user->getDisplayName()}");
 							continue(2);
 						}
-					}
-					
-					try {
-						$user->saveIconFromLocalFile($value);
-					
+						
+						if (isset($user->$profile_field) && !$override) {
+							// don't override profile field
+//	 						$sync_config->log("Profile field already set: {$profile_field} for user {$user->getDisplayName()}");
+							continue(2);
+						}
+						
+						// check for the same value
+						if ($user->$profile_field === $value) {
+							// same value, no need to update
+							continue(2);
+						}
+						
+						// save user attribute
+						$user->$profile_field = $value;
 						$user_touched = true;
-					} catch (Exception $e) {
-// 						$sync_config->log("Error during profile icon update for user: {$user->getDisplayName()}");
-					}
-					
-					break;
-				default:
-					// check overrides
-					$annotations = $user->getAnnotations([
-						'annotation_name' => "profile:{$profile_field}",
-						'limit' => false,
-					]);
-					if (!empty($annotations) && !$override) {
-						// don't override profile field
-// 						$sync_config->log("Profile field already set: {$profile_field} for user {$user->getDisplayName()}");
-						continue(2);
-					}
-					
-					// convert tags
-					if ($profile_fields[$profile_field] === 'tags') {
-						$value = string_to_tag_array($value);
-					}
-					
-					// remove existing value
-					if (empty($value)) {
+						break;
+					case 'user_icon_relative_path':
+						// get a user icon based on a relative file path/url
+						// only works with file based datasources (eg. csv)
+						if (!($sync_source instanceof ProfileSyncCSV)) {
+							$sync_config->log("Can't fetch relative user icon path in non CSV datasouces: trying user {$user->getDisplayName()}");
+							continue(2);
+						}
+						
+						// make new icon path
+						if (!empty($value)) {
+							$value = Paths::sanitize($value, false); // prevent abuse (like ../../......)
+							$value = ltrim($value, DIRECTORY_SEPARATOR); // remove beginning /
+							$value = $base_location . DIRECTORY_SEPARATOR . $value; // concat base location and rel path
+						}
+						
+					case 'user_icon_full_path':
+						// get a user icon based on a full file path/url
+						
+						if (!empty($user->icontime) && !$override) {
+							// don't override icon
+// 							$sync_config->log("User already has an icon: {$user->getDisplayName()}");
+							continue(2);
+						}
+						
+							
+						if (empty($value) && $user->icontime) {
+							// no icon, so unset current icon
+							$sync_config->log("Removing icon for user: {$user->getDisplayName()}");
+							
+							$user->deleteIcon();
+							
+							// on to the next field
+							continue(2);
+						}
+						
+						// try to get the user icon
+						$icon_contents = file_get_contents($value);
+						if (empty($icon_contents)) {
+							$sync_config->log("Unable to fetch user icon: {$value} for user {$user->getDisplayName()}");
+							continue(2);
+						}
+						
+						// was csv image updated
+						$csv_icontime = @filemtime($value);
+						if (($csv_icontime !== false) && isset($user->icontime)) {
+							$csv_icontime = (int) $csv_icontime;
+							$icontime = (int) $user->icontime;
+							
+							if ($csv_icontime === $icontime) {
+								// base image has same modified time as user icontime, so skipp
+//	 							$sync_config->log("No need to update user icon for user: {$user->getDisplayName()}");
+								continue(2);
+							}
+						}
+						
+						try {
+							$user->saveIconFromLocalFile($value);
+						
+							$user_touched = true;
+						} catch (Exception $e) {
+//	 						$sync_config->log("Error during profile icon update for user: {$user->getDisplayName()}");
+						}
+						
+						break;
+					default:
+						// check overrides
+						$annotations = $user->getAnnotations([
+							'annotation_name' => "profile:{$profile_field}",
+							'limit' => false,
+						]);
+						if (!empty($annotations) && !$override) {
+							// don't override profile field
+//	 						$sync_config->log("Profile field already set: {$profile_field} for user {$user->getDisplayName()}");
+							continue(2);
+						}
+						
+						// convert tags
+						if ($profile_fields[$profile_field] === 'tags') {
+							$value = string_to_tag_array($value);
+						}
+						
+						// remove existing value
+						if (empty($value)) {
+							if (!empty($annotations)) {
+								$user->deleteAnnotations("profile:{$profile_field}");
+								$user->deleteMetadata($profile_field);
+							}
+							continue(2);
+						}
+						
+						// check for the same value
+						$profile_values = [];
 						if (!empty($annotations)) {
-							$user->deleteAnnotations("profile:{$profile_field}");
-							$user->deleteMetadata($profile_field);
+							foreach ($annotations as $a) {
+								$profile_values[] = $a->value;
+							}
 						}
-						continue(2);
-					}
-					
-					// check for the same value
-					$profile_values = [];
-					if (!empty($annotations)) {
-						foreach ($annotations as $a) {
-							$profile_values[] = $a->value;
+						$new_values = (array) $value;
+						if (array_diff($profile_values, $new_values) === array_diff($new_values, $profile_values)) {
+							// same value, no need to update
+							continue(2);
 						}
-					}
-					$new_values = (array) $value;
-					if (array_diff($profile_values, $new_values) === array_diff($new_values, $profile_values)) {
-						// same value, no need to update
-						continue(2);
-					}
-					
-// 					$sync_config->log("Updating {$profile_field} with value '" . implode(',', $new_values) . "' old value '" . implode(',', $profile_values) . "'");
-					
-					// get the access of existing profile data
-					$access = profile_sync_get_profile_field_access($user->guid, $profile_field, $access);
-					
-					// save new value
-					// first remove old values
-					$user->deleteAnnotations("profile:{$profile_field}");
-					$user->deleteMetadata($profile_field);
-					
-					// store profile data in annotations
-					if (is_array($value)) {
-						foreach ($value as $v) {
-							$user->annotate("profile:{$profile_field}", $v, $access, $user->guid, 'text');
+						
+// 						$sync_config->log("Updating {$profile_field} with value '" . implode(',', $new_values) . "' old value '" . implode(',', $profile_values) . "'");
+						
+						// get the access of existing profile data
+						$access = profile_sync_get_profile_field_access($user->guid, $profile_field, $access);
+						
+						// save new value
+						// first remove old values
+						$user->deleteAnnotations("profile:{$profile_field}");
+						$user->deleteMetadata($profile_field);
+						
+						// store profile data in annotations
+						if (is_array($value)) {
+							foreach ($value as $v) {
+								$user->annotate("profile:{$profile_field}", $v, $access, $user->guid, 'text');
+							}
+						} else {
+							$user->annotate("profile:{$profile_field}", $value, $access, $user->guid, 'text');
 						}
-					} else {
-						$user->annotate("profile:{$profile_field}", $value, $access, $user->guid, 'text');
-					}
-					
-					// and in metadata for BC
-					$user->$profile_field = $value;
-					
-					$user_touched = true;
-					break;
+						
+						// and in metadata for BC
+						$user->$profile_field = $value;
+						
+						$user_touched = true;
+						break;
+				}
 			}
+			
+			if ($user_touched) {
+				// if user data changed update user
+				$user->save();
+			}
+			
+			// let others know we updated the user
+			$update_event_params = [
+				'entity' => $user,
+				'source_row' => $source_row,
+				'sync_config' => $sync_config,
+				'datasource' => $datasource,
+			];
+			elgg_trigger_event('update_user', 'profile_sync', $update_event_params);
+			
+			// report done
+			$sync_config->log("User processed: {$user->getDisplayName()} ({$user->username})");
+			
+			// cache cleanup
+			$user->invalidateCache();
 		}
 		
-		if ($user_touched) {
-			// if user data changed update user
-			$user->save();
+		$sync_config->log('Done processing' . PHP_EOL);
+		
+		// log stats
+		$log = 'Stats:' . PHP_EOL;
+		foreach ($counters as $name => $count) {
+			$log .= "{$name}: {$count}" . PHP_EOL;
 		}
+		$sync_config->log($log);
 		
-		// let others know we updated the user
-		$update_event_params = [
-			'entity' => $user,
-			'source_row' => $source_row,
-			'sync_config' => $sync_config,
-			'datasource' => $datasource,
-		];
-		elgg_trigger_event('update_user', 'profile_sync', $update_event_params);
+		// close logfile
+		$sync_config->closeLog();
 		
-		// report done
-		$sync_config->log("User processed: {$user->getDisplayName()} ({$user->username})");
+		// save last run
+		$sync_config->lastrun = time();
 		
-		// cache cleanup
-		$user->invalidateCache();
-	}
-	
-	$sync_config->log('Done processing' . PHP_EOL);
-	
-	// log stats
-	$log = 'Stats:' . PHP_EOL;
-	foreach ($counters as $name => $count) {
-		$log .= "{$name}: {$count}" . PHP_EOL;
-	}
-	$sync_config->log($log);
-	
-	// close logfile
-	$sync_config->closeLog();
-	
-	// save last run
-	$sync_config->lastrun = time();
-	
-	// cleanup datasource cache
-	$sync_source->cleanup();
-	// re-enable db caching
-	_elgg_services()->db->enableQueryCache();
-	// restore access
-	elgg_set_ignore_access($ia);
-	
-	// clear metadata cache
-	$metadata_cache->clearAll();
+		// cleanup datasource cache
+		$sync_source->cleanup();
+		// re-enable db caching
+		_elgg_services()->db->enableQueryCache();
+		
+		// clear metadata cache
+		$metadata_cache->clearAll();
+	});
 }
 
 /**
