@@ -1,6 +1,10 @@
 Version history
 ===============
 
+4.1 (2019-08-22):
+
+- changed: replaces set_ignore_access with elgg_call
+
 4.0.2 (2019-05-29):
 
 - fixed: unable to create / edit sync config
